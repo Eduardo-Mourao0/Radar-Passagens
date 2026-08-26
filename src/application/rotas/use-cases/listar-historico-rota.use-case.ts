@@ -1,0 +1,23 @@
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ROTAS_REPOSITORY,
+} from '../../../domain/rotas/repositories/rotas.repository';
+import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
+
+@Injectable()
+export class ListarHistoricoRotaUseCase {
+  constructor(
+    @Inject(ROTAS_REPOSITORY)
+    private readonly rotasRepository: RotasRepository,
+  ) {}
+
+  async execute(rotaId: string) {
+    const rota = await this.rotasRepository.buscarPorId(rotaId);
+
+    if (!rota) {
+      throw new NotFoundException('Rota não encontrada.');
+    }
+
+    return this.rotasRepository.listarHistorico(rotaId);
+  }
+}

@@ -7,10 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Rota {
+  id         String           @id @default(uuid())
+  origem     String
+  destino    String
+  dataIda    DateTime
+  dataVolta  DateTime?
+  ativa      Boolean          @default(true)
+  criadoEm   DateTime         @default(now())
+  historicos HistoricoPreco[]
+
+  @@index([ativa])
+}
+
+model HistoricoPreco {
+  id         String   @id @default(uuid())
+  rotaId     String
+  rota       Rota     @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+  preco      Decimal  @db.Decimal(10, 2)
+  moeda      String
+  companhia  String
+  coletadoEm DateTime @default(now())
+
+  @@index([rotaId, coletadoEm])
 }

@@ -1,8 +1,20 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { HttpService } from '@nestjs/axios';
 import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { AmadeusService } from './amadeus.service';
+
+const rota = {
+  id: 'rota-1',
+  chaveMonitoramento: 'GRU:REC:2026-09-10:SOMENTE_IDA',
+  origem: 'GRU',
+  destino: 'REC',
+  dataIda: new Date(2026, 8, 10),
+  dataVolta: null,
+  ativa: true,
+  criadoEm: new Date(2026, 0, 1),
+} as const;
 
 describe('AmadeusService', () => {
   const configService = {
@@ -117,6 +129,86 @@ describe('AmadeusService', () => {
     const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     await expect(service.obterToken()).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    errorLog.mockRestore();
+  });
+
+  it('consulta e normaliza a menor oferta de voo', async () => {
+    const httpService = {
+      post: jest
+        .fn()
+        .mockReturnValue(
+          of({ data: { access_token: 'token-1', expires_in: 1_800 } }),
+        ),
+      get: jest.fn().mockReturnValue(
+        of({
+          data: {
+            data: [
+              {
+                price: { total: '450.50', currency: 'BRL' },
+                itineraries: [{ segments: [{ carrierCode: 'AD' }] }],
+              },
+              {
+                price: { total: '380.00', currency: 'BRL' },
+                itineraries: [{ segments: [{ carrierCode: 'G3' }] }],
+              },
+            ],
+            dictionaries: { carriers: { AD: 'Azul', G3: 'GOL' } },
+          },
+        }),
+      ),
+    } as unknown as HttpService;
+    const service = new AmadeusService(httpService, configService);
+
+    await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
+      preco: '380.00',
+      moeda: 'BRL',
+      companhia: 'GOL',
+    });
+    expect(httpService.get).toHaveBeenCalledWith(
+      'https://test.api.amadeus.com/v2/shopping/flight-offers',
+      {
+        headers: { Authorization: 'Bearer token-1' },
+        params: {
+          originLocationCode: 'GRU',
+          destinationLocationCode: 'REC',
+          departureDate: '2026-09-10',
+          adults: 1,
+          max: 10,
+          currencyCode: 'BRL',
+        },
+      },
+    );
+  });
+
+  it('retorna null quando a Amadeus não encontra ofertas', async () => {
+    const httpService = {
+      post: jest
+        .fn()
+        .mockReturnValue(
+          of({ data: { access_token: 'token-1', expires_in: 1_800 } }),
+        ),
+      get: jest.fn().mockReturnValue(of({ data: { data: [] } })),
+    } as unknown as HttpService;
+    const service = new AmadeusService(httpService, configService);
+
+    await expect(service.consultarMenorPreco(rota)).resolves.toBeNull();
+  });
+
+  it('rejeita uma resposta de ofertas malformada', async () => {
+    const httpService = {
+      post: jest
+        .fn()
+        .mockReturnValue(
+          of({ data: { access_token: 'token-1', expires_in: 1_800 } }),
+        ),
+      get: jest.fn().mockReturnValue(of({ data: { data: null } })),
+    } as unknown as HttpService;
+    const service = new AmadeusService(httpService, configService);
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+    await expect(service.consultarMenorPreco(rota)).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
     errorLog.mockRestore();

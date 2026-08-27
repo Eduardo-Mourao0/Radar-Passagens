@@ -7,11 +7,41 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
+import {
+  ConsultarPrecosVoo,
+  CotacaoDeVoo,
+} from '../../application/rotas/ports/consultar-precos-voo.port';
 import { MENSAGENS_ERRO } from '../../domain/errors/mensagens-erro';
+import { Rota } from '../../domain/rotas/entities/rota.entity';
 
 const respostaTokenAmadeusSchema = z.object({
   access_token: z.string().trim().min(1),
   expires_in: z.number().finite().positive(),
+});
+
+const respostaOfertasAmadeusSchema = z.object({
+  data: z.array(
+    z.object({
+      price: z.object({
+        total: z.string().regex(/^\d+(?:\.\d{1,2})?$/),
+        currency: z.string().length(3),
+      }),
+      itineraries: z
+        .array(
+          z.object({
+            segments: z
+              .array(z.object({ carrierCode: z.string().min(1) }))
+              .min(1),
+          }),
+        )
+        .min(1),
+    }),
+  ),
+  dictionaries: z
+    .object({
+      carriers: z.record(z.string(), z.string()),
+    })
+    .optional(),
 });
 
 type TokenEmCache = Readonly<{
@@ -23,7 +53,7 @@ type TokenEmCache = Readonly<{
  * Fronteira de infraestrutura para autenticação e consultas à API Amadeus.
  */
 @Injectable()
-export class AmadeusService {
+export class AmadeusService implements ConsultarPrecosVoo {
   private static readonly MARGEM_EXPIRACAO_MS = 60_000;
 
   private readonly logger = new Logger(AmadeusService.name);
@@ -48,6 +78,73 @@ export class AmadeusService {
       return await this.tokenEmAtualizacao;
     } finally {
       this.tokenEmAtualizacao = null;
+    }
+  }
+
+  async consultarMenorPreco(rota: Rota): Promise<CotacaoDeVoo | null> {
+    const token = await this.obterToken();
+    const baseUrl = this.configService.getOrThrow<string>('AMADEUS_BASE_URL');
+
+    try {
+      const resposta = await firstValueFrom(
+        this.httpService.get<unknown>(
+          `${baseUrl.replace(/\/$/, '')}/v2/shopping/flight-offers`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params: {
+              originLocationCode: rota.origem,
+              destinationLocationCode: rota.destino,
+              departureDate: this.formatarData(rota.dataIda),
+              ...(rota.dataVolta
+                ? { returnDate: this.formatarData(rota.dataVolta) }
+                : {}),
+              adults: 1,
+              max: 10,
+              currencyCode: 'BRL',
+            },
+          },
+        ),
+      );
+
+      const ofertas = respostaOfertasAmadeusSchema.safeParse(resposta.data);
+      if (!ofertas.success) {
+        this.registrarFalhaConsulta('resposta_invalida');
+        throw new ServiceUnavailableException(
+          MENSAGENS_ERRO.amadeusConsultaIndisponivel,
+        );
+      }
+
+      const menorOferta = ofertas.data.data.reduce(
+        (menor, oferta) =>
+          !menor || Number(oferta.price.total) < Number(menor.price.total)
+            ? oferta
+            : menor,
+        undefined as (typeof ofertas.data.data)[number] | undefined,
+      );
+
+      if (!menorOferta) {
+        return null;
+      }
+
+      const codigoCompanhia =
+        menorOferta.itineraries[0].segments[0].carrierCode;
+
+      return {
+        preco: menorOferta.price.total,
+        moeda: menorOferta.price.currency,
+        companhia:
+          ofertas.data.dictionaries?.carriers?.[codigoCompanhia] ??
+          codigoCompanhia,
+      };
+    } catch (erro) {
+      if (erro instanceof ServiceUnavailableException) {
+        throw erro;
+      }
+
+      this.registrarFalhaConsulta('rede');
+      throw new ServiceUnavailableException(
+        MENSAGENS_ERRO.amadeusConsultaIndisponivel,
+      );
     }
   }
 
@@ -117,5 +214,22 @@ export class AmadeusService {
         tipo,
       }),
     );
+  }
+
+  private registrarFalhaConsulta(tipo: 'rede' | 'resposta_invalida'): void {
+    this.logger.error(
+      JSON.stringify({
+        evento: 'amadeus_consulta_preco_falhou',
+        tipo,
+      }),
+    );
+  }
+
+  private formatarData(data: Date): string {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+
+    return `${ano}-${mes}-${dia}`;
   }
 }

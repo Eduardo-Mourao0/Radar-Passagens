@@ -37,6 +37,8 @@ const respostaIgnavSchema = z.object({
   ),
 });
 
+type TipoFalhaConsulta = 'rede' | 'resposta_invalida' | 'inesperada';
+
 /**
  * Adaptador da Ignav que normaliza tarifas para o contrato da aplicação.
  */
@@ -117,25 +119,38 @@ export class IgnavService implements ConsultarPrecosVoo {
         moeda: menorOferta.price.currency,
         companhia: companhiaIdentificada ?? 'Companhia não identificada',
       };
-    } catch (erro) {
+    } catch (erro: unknown) {
       if (erro instanceof ServiceUnavailableException) {
         throw erro;
       }
 
-      this.registrarFalhaConsulta('rede');
+      this.registrarFalhaConsulta(this.identificarTipoFalha(erro));
       throw new ServiceUnavailableException(
         MENSAGENS_ERRO.ignavConsultaIndisponivel,
       );
     }
   }
 
-  private registrarFalhaConsulta(tipo: 'rede' | 'resposta_invalida'): void {
+  private registrarFalhaConsulta(tipo: TipoFalhaConsulta): void {
     this.logger.error(
       JSON.stringify({
         evento: 'ignav_consulta_preco_falhou',
         tipo,
       }),
     );
+  }
+
+  private identificarTipoFalha(erro: unknown): TipoFalhaConsulta {
+    if (
+      typeof erro === 'object' &&
+      erro !== null &&
+      'isAxiosError' in erro &&
+      erro.isAxiosError === true
+    ) {
+      return 'rede';
+    }
+
+    return 'inesperada';
   }
 
   private identificarCompanhia(

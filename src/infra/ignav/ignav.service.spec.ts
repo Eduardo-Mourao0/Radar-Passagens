@@ -270,6 +270,27 @@ describe('IgnavService', () => {
     errorLog.mockRestore();
   });
 
+  it('registra falhas inesperadas sem classificá-las como rede', async () => {
+    const httpService = {
+      post: jest
+        .fn()
+        .mockReturnValue(throwError(() => new Error('falha inesperada'))),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+    await expect(service.consultarMenorPreco(rota)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(errorLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'ignav_consulta_preco_falhou',
+        tipo: 'inesperada',
+      }),
+    );
+    errorLog.mockRestore();
+  });
+
   it('rejeita uma resposta malformada', async () => {
     const httpService = {
       post: jest.fn().mockReturnValue(of({ data: { itineraries: null } })),

@@ -1,8 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
-import {
-  ROTAS_REPOSITORY,
-} from '../../../domain/rotas/repositories/rotas.repository';
+import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
 
 @Injectable()

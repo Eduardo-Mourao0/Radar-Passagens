@@ -26,13 +26,10 @@ export const criarRotaSchema = z
     message: MENSAGENS_ERRO.origemDestinoIguais,
     path: ['destino'],
   })
-  .refine(
-    ({ dataIda, dataVolta }) => !dataVolta || dataVolta >= dataIda,
-    {
-      message: MENSAGENS_ERRO.dataVoltaAnterior,
-      path: ['dataVolta'],
-    },
-  )
+  .refine(({ dataIda, dataVolta }) => !dataVolta || dataVolta >= dataIda, {
+    message: MENSAGENS_ERRO.dataVoltaAnterior,
+    path: ['dataVolta'],
+  })
   .strict();
 
 export type CriarRotaInput = z.infer<typeof criarRotaSchema>;

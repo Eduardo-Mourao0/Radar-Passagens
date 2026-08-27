@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { AmadeusService } from './amadeus.service';
@@ -86,6 +86,7 @@ describe('AmadeusService', () => {
         ),
     } as unknown as HttpService;
     const service = new AmadeusService(httpService, configService);
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     const erro = await service.obterToken().catch((erro: unknown) => erro);
 
@@ -96,6 +97,9 @@ describe('AmadeusService', () => {
     expect(
       JSON.stringify((erro as ServiceUnavailableException).getResponse()),
     ).not.toContain('client-secret');
+    expect(JSON.stringify(errorLog.mock.calls)).not.toContain('client-id');
+    expect(JSON.stringify(errorLog.mock.calls)).not.toContain('client-secret');
+    errorLog.mockRestore();
   });
 
   it.each([
@@ -104,14 +108,17 @@ describe('AmadeusService', () => {
     ['expiração zero', { access_token: 'token-1', expires_in: 0 }],
     ['expiração negativa', { access_token: 'token-1', expires_in: -1 }],
     ['campos obrigatórios ausentes', {}],
+    ['dados nulos', null],
   ])('rejeita resposta com %s', async (_, resposta) => {
     const httpService = {
       post: jest.fn().mockReturnValue(of({ data: resposta })),
     } as unknown as HttpService;
     const service = new AmadeusService(httpService, configService);
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     await expect(service.obterToken()).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+    errorLog.mockRestore();
   });
 });

@@ -1,13 +1,18 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { z } from 'zod';
 import { MENSAGENS_ERRO } from '../../domain/errors/mensagens-erro';
 
-type RespostaTokenAmadeus = Readonly<{
-  access_token: string;
-  expires_in: number;
-}>;
+const respostaTokenAmadeusSchema = z.object({
+  access_token: z.string().trim().min(1),
+  expires_in: z.number().finite().positive(),
+});
 
 type TokenEmCache = Readonly<{
   accessToken: string;
@@ -21,6 +26,7 @@ type TokenEmCache = Readonly<{
 export class AmadeusService {
   private static readonly MARGEM_EXPIRACAO_MS = 60_000;
 
+  private readonly logger = new Logger(AmadeusService.name);
   private tokenEmCache: TokenEmCache | null = null;
   private tokenEmAtualizacao: Promise<string> | null = null;
 
@@ -67,7 +73,7 @@ export class AmadeusService {
 
     try {
       const resposta = await firstValueFrom(
-        this.httpService.post<RespostaTokenAmadeus>(
+        this.httpService.post<unknown>(
           `${baseUrl.replace(/\/$/, '')}/v1/security/oauth2/token`,
           corpo.toString(),
           {
@@ -78,20 +84,17 @@ export class AmadeusService {
         ),
       );
 
-      if (
-        typeof resposta.data.access_token !== 'string' ||
-        !resposta.data.access_token.trim() ||
-        !Number.isFinite(resposta.data.expires_in) ||
-        resposta.data.expires_in <= 0
-      ) {
+      const token = respostaTokenAmadeusSchema.safeParse(resposta.data);
+      if (!token.success) {
+        this.registrarFalhaAutenticacao('resposta_invalida');
         throw new ServiceUnavailableException(
           MENSAGENS_ERRO.amadeusAutenticacaoIndisponivel,
         );
       }
 
       this.tokenEmCache = {
-        accessToken: resposta.data.access_token,
-        expiraEm: Date.now() + resposta.data.expires_in * 1_000,
+        accessToken: token.data.access_token,
+        expiraEm: Date.now() + token.data.expires_in * 1_000,
       };
 
       return this.tokenEmCache.accessToken;
@@ -100,9 +103,19 @@ export class AmadeusService {
         throw erro;
       }
 
+      this.registrarFalhaAutenticacao('rede');
       throw new ServiceUnavailableException(
         MENSAGENS_ERRO.amadeusAutenticacaoIndisponivel,
       );
     }
+  }
+
+  private registrarFalhaAutenticacao(tipo: 'rede' | 'resposta_invalida'): void {
+    this.logger.error(
+      JSON.stringify({
+        evento: 'amadeus_oauth2_falhou',
+        tipo,
+      }),
+    );
   }
 }

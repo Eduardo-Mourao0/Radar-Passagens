@@ -18,6 +18,13 @@ describe('HistoricoPrecoEntity', () => {
     },
   );
 
+  it('aceita o maior preço suportado pelo campo Decimal(10, 2)', () => {
+    expect(HistoricoPrecoEntity.criar({ ...dados, preco: '99999999.99' })).toEqual({
+      ...dados,
+      preco: '99999999.99',
+    });
+  });
+
   it.each(['AAA', 'XXX', 'brl'])(
     'rejeita a moeda não suportada %s',
     (moeda) => {
@@ -40,5 +47,14 @@ describe('HistoricoPrecoEntity', () => {
         dados,
       ),
     ).toBe(false);
+  });
+
+  it.each([
+    ['uma companhia longa demais', 'A'.repeat(101)],
+    ['caractere de controle', 'LATAM\nAirlines'],
+  ])('rejeita %s', (_, companhia) => {
+    expect(() => HistoricoPrecoEntity.criar({ ...dados, companhia })).toThrow(
+      RegraDeNegocioError,
+    );
   });
 });

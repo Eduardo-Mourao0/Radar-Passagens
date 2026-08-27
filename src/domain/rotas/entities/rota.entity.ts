@@ -93,6 +93,7 @@ export type NovoHistoricoPreco = DadosNovoHistoricoPreco;
 
 export class HistoricoPrecoEntity {
   private static readonly MOEDAS_SUPORTADAS = ['BRL', 'USD', 'EUR'] as const;
+  private static readonly NOME_COMPANHIA_VALIDO = /^[\p{L}\p{N} .&'-]+$/u;
 
   static criar(dados: DadosNovoHistoricoPreco): NovoHistoricoPreco {
     if (
@@ -111,11 +112,19 @@ export class HistoricoPrecoEntity {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.moedaInvalida);
     }
 
-    if (!dados.companhia.trim()) {
+    const companhia = dados.companhia.trim();
+    if (!companhia) {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaObrigatoria);
     }
 
-    return { ...dados, companhia: dados.companhia.trim() };
+    if (
+      companhia.length > 100 ||
+      !this.NOME_COMPANHIA_VALIDO.test(companhia)
+    ) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaInvalida);
+    }
+
+    return { ...dados, companhia };
   }
 
   static temMesmoValor(

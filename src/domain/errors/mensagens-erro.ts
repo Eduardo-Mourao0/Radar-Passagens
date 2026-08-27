@@ -11,4 +11,6 @@ export const MENSAGENS_ERRO = {
     'preco deve ser um valor decimal positivo de até 99.999.999,99.',
   moedaInvalida: 'moeda deve ser uma das moedas suportadas: BRL, USD ou EUR.',
   companhiaObrigatoria: 'companhia é obrigatória.',
+  companhiaInvalida:
+    'companhia deve ter no máximo 100 caracteres e conter apenas letras, números, espaços, hífens, apóstrofos, pontos ou &.',
 } as const;

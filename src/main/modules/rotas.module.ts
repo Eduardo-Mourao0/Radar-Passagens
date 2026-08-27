@@ -7,12 +7,12 @@ import { ListarRotasUseCase } from '../../application/rotas/use-cases/listar-rot
 import { RegistrarHistoricoPrecoUseCase } from '../../application/rotas/use-cases/registrar-historico-preco.use-case';
 import { ROTAS_REPOSITORY } from '../../domain/rotas/repositories/rotas.repository';
 import { PrismaRotasRepository } from '../../infra/database/prisma/repositories/prisma-rotas.repository';
-import { AmadeusModule } from '../../infra/amadeus/amadeus.module';
-import { AmadeusService } from '../../infra/amadeus/amadeus.service';
+import { IgnavModule } from '../../infra/ignav/ignav.module';
+import { IgnavService } from '../../infra/ignav/ignav.service';
 import { RotasController } from '../../infra/http/controllers/rotas.controller';
 
 @Module({
-  imports: [AmadeusModule],
+  imports: [IgnavModule],
   controllers: [RotasController],
   providers: [
     CriarRotaUseCase,
@@ -26,7 +26,7 @@ import { RotasController } from '../../infra/http/controllers/rotas.controller';
     },
     {
       provide: CONSULTAR_PRECOS_VOO,
-      useExisting: AmadeusService,
+      useExisting: IgnavService,
     },
     PriceCheckJob,
   ],

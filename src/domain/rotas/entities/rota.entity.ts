@@ -81,3 +81,30 @@ export type HistoricoPreco = Readonly<{
   companhia: string;
   coletadoEm: Date;
 }>;
+
+export type DadosNovoHistoricoPreco = Readonly<{
+  rotaId: string;
+  preco: string;
+  moeda: string;
+  companhia: string;
+}>;
+
+export type NovoHistoricoPreco = DadosNovoHistoricoPreco;
+
+export class HistoricoPrecoEntity {
+  static criar(dados: DadosNovoHistoricoPreco): NovoHistoricoPreco {
+    if (!/^\d+(\.\d{1,2})?$/.test(dados.preco) || Number(dados.preco) <= 0) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.precoInvalido);
+    }
+
+    if (!/^[A-Z]{3}$/.test(dados.moeda)) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.moedaInvalida);
+    }
+
+    if (!dados.companhia.trim()) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaObrigatoria);
+    }
+
+    return { ...dados, companhia: dados.companhia.trim() };
+  }
+}

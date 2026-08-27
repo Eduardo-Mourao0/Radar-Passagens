@@ -8,4 +8,7 @@ export const MENSAGENS_ERRO = {
   dadosEntradaInvalidos: 'Dados de entrada inválidos.',
   rotaDuplicada: 'Esta rota já está cadastrada.',
   rotaNaoEncontrada: 'Rota não encontrada.',
+  precoInvalido: 'preco deve ser um valor decimal positivo com até duas casas.',
+  moedaInvalida: 'moeda deve ser um código ISO de três letras maiúsculas.',
+  companhiaObrigatoria: 'companhia é obrigatória.',
 } as const;

@@ -4,7 +4,13 @@ import {
 } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { HistoricoPreco, NovaRota, NovoHistoricoPreco, Rota } from '../../../../domain/rotas/entities/rota.entity';
+import {
+  HistoricoPreco,
+  HistoricoPrecoEntity,
+  NovaRota,
+  NovoHistoricoPreco,
+  Rota,
+} from '../../../../domain/rotas/entities/rota.entity';
 import { RotasRepository } from '../../../../domain/rotas/repositories/rotas.repository';
 
 @Injectable()
@@ -70,19 +76,37 @@ export class PrismaRotasRepository implements RotasRepository {
     return historicos.map((historico) => this.mapearHistorico(historico));
   }
 
-  async buscarUltimoHistorico(rotaId: string): Promise<HistoricoPreco | null> {
-    const historico = await this.prisma.historicoPreco.findFirst({
-      where: { rotaId },
-      orderBy: { coletadoEm: 'desc' },
+  async registrarHistoricoSeDiferente(
+    dados: NovoHistoricoPreco,
+  ): Promise<HistoricoPreco | null> {
+    const historico = await this.prisma.$transaction(async (transacao) => {
+      await transacao.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtext(${dados.rotaId}))
+      `;
+
+      const ultimoHistorico = await transacao.historicoPreco.findFirst({
+        where: { rotaId: dados.rotaId },
+        orderBy: { coletadoEm: 'desc' },
+      });
+
+      if (
+        ultimoHistorico &&
+        HistoricoPrecoEntity.temMesmoValor(
+          {
+            preco: ultimoHistorico.preco.toString(),
+            moeda: ultimoHistorico.moeda,
+            companhia: ultimoHistorico.companhia,
+          },
+          dados,
+        )
+      ) {
+        return null;
+      }
+
+      return transacao.historicoPreco.create({ data: dados });
     });
 
     return historico ? this.mapearHistorico(historico) : null;
-  }
-
-  async criarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco> {
-    const historico = await this.prisma.historicoPreco.create({ data: dados });
-
-    return this.mapearHistorico(historico);
   }
 
   private mapearRota(rota: PrismaRota): Rota {

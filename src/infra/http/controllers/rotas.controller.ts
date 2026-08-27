@@ -1,5 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { RegraDeNegocioError } from '../../../domain/errors/regra-de-negocio.error';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
@@ -23,17 +22,10 @@ export class RotasController {
 
   @Post()
   async criar(
-    @Body(new ZodValidationPipe(criarRotaSchema)) criarRotaInput: CriarRotaInput,
+    @Body(new ZodValidationPipe(criarRotaSchema))
+    criarRotaInput: CriarRotaInput,
   ) {
-    try {
-      return await this.criarRotaUseCase.execute(criarRotaInput);
-    } catch (erro) {
-      if (erro instanceof RegraDeNegocioError) {
-        throw new BadRequestException(erro.message);
-      }
-
-      throw erro;
-    }
+    return this.criarRotaUseCase.execute(criarRotaInput);
   }
 
   @Get()

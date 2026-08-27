@@ -92,12 +92,22 @@ export type DadosNovoHistoricoPreco = Readonly<{
 export type NovoHistoricoPreco = DadosNovoHistoricoPreco;
 
 export class HistoricoPrecoEntity {
+  private static readonly MOEDAS_SUPORTADAS = ['BRL', 'USD', 'EUR'] as const;
+
   static criar(dados: DadosNovoHistoricoPreco): NovoHistoricoPreco {
-    if (!/^\d+(\.\d{1,2})?$/.test(dados.preco) || Number(dados.preco) <= 0) {
+    if (
+      !/^(?:[1-9]\d{0,7}(?:\.\d{1,2})?|0\.(?:0[1-9]|[1-9]\d?))$/.test(
+        dados.preco,
+      )
+    ) {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.precoInvalido);
     }
 
-    if (!/^[A-Z]{3}$/.test(dados.moeda)) {
+    if (
+      !this.MOEDAS_SUPORTADAS.includes(
+        dados.moeda as (typeof this.MOEDAS_SUPORTADAS)[number],
+      )
+    ) {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.moedaInvalida);
     }
 
@@ -106,5 +116,16 @@ export class HistoricoPrecoEntity {
     }
 
     return { ...dados, companhia: dados.companhia.trim() };
+  }
+
+  static temMesmoValor(
+    historico: Pick<HistoricoPreco, 'preco' | 'moeda' | 'companhia'>,
+    outro: Pick<NovoHistoricoPreco, 'preco' | 'moeda' | 'companhia'>,
+  ): boolean {
+    return (
+      historico.preco === outro.preco &&
+      historico.moeda === outro.moeda &&
+      historico.companhia === outro.companhia
+    );
   }
 }

@@ -35,8 +35,7 @@ describe('Casos de uso de rotas', () => {
       listarAtivas: jest.fn(),
       buscarPorId: jest.fn(),
       listarHistorico: jest.fn(),
-      buscarUltimoHistorico: jest.fn(),
-      criarHistorico: jest.fn(),
+      registrarHistoricoSeDiferente: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({

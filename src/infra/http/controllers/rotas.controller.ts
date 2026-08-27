@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
@@ -18,6 +29,8 @@ export class RotasController {
     private readonly criarRotaUseCase: CriarRotaUseCase,
     private readonly listarRotasUseCase: ListarRotasUseCase,
     private readonly listarHistoricoRotaUseCase: ListarHistoricoRotaUseCase,
+    private readonly priceCheckJob: PriceCheckJob,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post()
@@ -38,5 +51,17 @@ export class RotasController {
     @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
   ) {
     return this.listarHistoricoRotaUseCase.execute(params.id);
+  }
+
+  @Post('verificar-precos')
+  @HttpCode(HttpStatus.OK)
+  async verificarPrecos(): Promise<{ mensagem: string }> {
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new ForbiddenException();
+    }
+
+    await this.priceCheckJob.executar();
+
+    return { mensagem: 'Verificação de preços concluída.' };
   }
 }

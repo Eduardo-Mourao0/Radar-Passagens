@@ -68,26 +68,28 @@ A aplicação fica disponível em `http://localhost:3000`.
 
 O arquivo `.env.example` contém valores locais prontos para o Docker.
 
-| Variável            | Descrição                            |
-| ------------------- | ------------------------------------ |
-| `PORT`              | Porta HTTP da API. Padrão: `3000`.   |
-| `POSTGRES_USER`     | Usuário do PostgreSQL no container.  |
-| `POSTGRES_PASSWORD` | Senha do PostgreSQL no container.    |
-| `POSTGRES_DB`       | Nome do banco de dados.              |
-| `POSTGRES_PORT`     | Porta exposta pelo PostgreSQL.       |
-| `DATABASE_URL`      | String de conexão usada pelo Prisma. |
-| `IGNAV_API_KEY`     | Chave privada da API Ignav.          |
-| `IGNAV_BASE_URL`    | URL base da API Ignav.               |
+| Variável            | Descrição                                            |
+| ------------------- | ---------------------------------------------------- |
+| `PORT`              | Porta HTTP da API. Padrão: `3000`.                   |
+| `NODE_ENV`          | Ambiente da aplicação. Use `development` localmente. |
+| `POSTGRES_USER`     | Usuário do PostgreSQL no container.                  |
+| `POSTGRES_PASSWORD` | Senha do PostgreSQL no container.                    |
+| `POSTGRES_DB`       | Nome do banco de dados.                              |
+| `POSTGRES_PORT`     | Porta exposta pelo PostgreSQL.                       |
+| `DATABASE_URL`      | String de conexão usada pelo Prisma.                 |
+| `IGNAV_API_KEY`     | Chave privada da API Ignav.                          |
+| `IGNAV_BASE_URL`    | URL base da API Ignav.                               |
 
 Nunca envie o arquivo `.env` para o repositório.
 
 ## Endpoints disponíveis
 
-| Método | Rota                   | Descrição                              |
-| ------ | ---------------------- | -------------------------------------- |
-| `POST` | `/rotas`               | Cadastra uma rota para monitoramento.  |
-| `GET`  | `/rotas`               | Lista as rotas cadastradas.            |
-| `GET`  | `/rotas/:id/historico` | Retorna o histórico de preços da rota. |
+| Método | Rota                      | Descrição                                        |
+| ------ | ------------------------- | ------------------------------------------------ |
+| `POST` | `/rotas`                  | Cadastra uma rota para monitoramento.            |
+| `GET`  | `/rotas`                  | Lista as rotas cadastradas.                      |
+| `GET`  | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
+| `POST` | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
 
 ### Criar rota
 
@@ -116,6 +118,16 @@ Regras aplicadas no cadastro:
 - `400 Bad Request`: formato inválido ou regra de negócio não atendida;
 - `404 Not Found`: rota não encontrada ao consultar histórico;
 - `409 Conflict`: rota idêntica já está ativa.
+
+### Executar verificação manual
+
+Em desenvolvimento, envie uma requisição sem body:
+
+```http
+POST /rotas/verificar-precos
+```
+
+O endpoint espera a consulta e a persistência terminarem. Em produção ele é bloqueado para impedir disparos públicos de consultas pagas.
 
 ## Dados persistidos
 

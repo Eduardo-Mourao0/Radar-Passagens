@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from '../infra/http/controllers/app.controller';
 import { AppService } from '../infra/http/controllers/app.service';
 import { AmadeusModule } from '../infra/amadeus/amadeus.module';
@@ -15,6 +16,7 @@ import { RotasModule } from './modules/rotas.module';
       cache: true,
     }),
     PrismaModule,
+    ScheduleModule.forRoot(),
     AmadeusModule,
     RotasModule,
   ],

@@ -4,8 +4,8 @@ import { APP_FILTER } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from '../infra/http/controllers/app.controller';
 import { AppService } from '../infra/http/controllers/app.service';
-import { AmadeusModule } from '../infra/amadeus/amadeus.module';
 import { PrismaModule } from '../infra/database/prisma/prisma.module';
+import { IgnavModule } from '../infra/ignav/ignav.module';
 import { RegraDeNegocioExceptionFilter } from '../infra/http/filters/regra-de-negocio-exception.filter';
 import { RotasModule } from './modules/rotas.module';
 
@@ -17,7 +17,7 @@ import { RotasModule } from './modules/rotas.module';
     }),
     PrismaModule,
     ScheduleModule.forRoot(),
-    AmadeusModule,
+    IgnavModule,
     RotasModule,
   ],
   controllers: [AppController],

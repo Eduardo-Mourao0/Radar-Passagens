@@ -2,7 +2,7 @@
 
 Backend para cadastrar rotas aéreas e manter o histórico de preços de passagens. O projeto é construído em NestJS, com PostgreSQL e Prisma, e foi organizado em camadas para manter as regras de negócio independentes de HTTP e banco de dados.
 
-> A integração com a Amadeus e o job agendado já possuem a estrutura inicial, mas a consulta automática de preços ainda está em desenvolvimento.
+> A integração com a Ignav consulta tarifas verificadas e o job agendado registra o menor preço encontrado a cada seis horas.
 
 ## Tecnologias
 
@@ -21,10 +21,10 @@ src/
 │   └── rotas/
 ├── domain/                   # Entidades, erros e contratos de repositório
 │   └── rotas/
-├── infra/                    # Adaptadores: HTTP, Prisma e Amadeus
+├── infra/                    # Adaptadores: HTTP, Prisma e Ignav
 │   ├── database/prisma/
 │   ├── http/
-│   └── amadeus/
+│   └── ignav/
 └── main/                     # Bootstrap e composição dos módulos NestJS
 ```
 
@@ -68,17 +68,16 @@ A aplicação fica disponível em `http://localhost:3000`.
 
 O arquivo `.env.example` contém valores locais prontos para o Docker.
 
-| Variável                | Descrição                            |
-| ----------------------- | ------------------------------------ |
-| `PORT`                  | Porta HTTP da API. Padrão: `3000`.   |
-| `POSTGRES_USER`         | Usuário do PostgreSQL no container.  |
-| `POSTGRES_PASSWORD`     | Senha do PostgreSQL no container.    |
-| `POSTGRES_DB`           | Nome do banco de dados.              |
-| `POSTGRES_PORT`         | Porta exposta pelo PostgreSQL.       |
-| `DATABASE_URL`          | String de conexão usada pelo Prisma. |
-| `AMADEUS_CLIENT_ID`     | Chave de API da Amadeus.             |
-| `AMADEUS_CLIENT_SECRET` | Segredo da API da Amadeus.           |
-| `AMADEUS_BASE_URL`      | URL do ambiente Amadeus.             |
+| Variável            | Descrição                            |
+| ------------------- | ------------------------------------ |
+| `PORT`              | Porta HTTP da API. Padrão: `3000`.   |
+| `POSTGRES_USER`     | Usuário do PostgreSQL no container.  |
+| `POSTGRES_PASSWORD` | Senha do PostgreSQL no container.    |
+| `POSTGRES_DB`       | Nome do banco de dados.              |
+| `POSTGRES_PORT`     | Porta exposta pelo PostgreSQL.       |
+| `DATABASE_URL`      | String de conexão usada pelo Prisma. |
+| `IGNAV_API_KEY`     | Chave privada da API Ignav.          |
+| `IGNAV_BASE_URL`    | URL base da API Ignav.               |
 
 Nunca envie o arquivo `.env` para o repositório.
 
@@ -151,9 +150,6 @@ npm run prisma:studio
 
 ## Próximos passos
 
-- Implementar autenticação OAuth2 e busca de ofertas pela API Amadeus.
-- Executar a coleta periódica pelo job agendado.
-- Registrar preços encontrados usando o caso de uso de histórico.
 - Adicionar alertas para quedas de preço.
 
 ## Autor

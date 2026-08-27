@@ -13,10 +13,8 @@ export const MENSAGENS_ERRO = {
   companhiaObrigatoria: 'companhia é obrigatória.',
   companhiaInvalida:
     'companhia deve ter no máximo 100 caracteres e conter apenas letras, números, espaços, hífens, apóstrofos, pontos ou &.',
-  amadeusAutenticacaoIndisponivel:
-    'Não foi possível autenticar na Amadeus. Tente novamente mais tarde.',
-  amadeusConsultaIndisponivel:
-    'Não foi possível consultar os preços na Amadeus. Tente novamente mais tarde.',
+  ignavConsultaIndisponivel:
+    'Não foi possível consultar os preços na Ignav. Tente novamente mais tarde.',
 } as const;
 
 export const MENSAGENS_ERRO_PUBLICAS = new Set<string>([

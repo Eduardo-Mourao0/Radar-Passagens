@@ -1,0 +1,163 @@
+import { HttpService } from '@nestjs/axios';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
+import { z } from 'zod';
+import {
+  ConsultarPrecosVoo,
+  CotacaoDeVoo,
+} from '../../application/rotas/ports/consultar-precos-voo.port';
+import { MENSAGENS_ERRO } from '../../domain/errors/mensagens-erro';
+import { Rota } from '../../domain/rotas/entities/rota.entity';
+
+const respostaIgnavSchema = z.object({
+  itineraries: z.array(
+    z.object({
+      price: z.object({
+        amount: z.number().finite().positive(),
+        currency: z.literal('BRL'),
+        status: z.enum(['verified', 'unverified']),
+      }),
+      outbound: z.object({
+        carrier: z.string().trim().min(1).optional(),
+        segments: z
+          .array(
+            z.object({
+              operating_carrier_name: z.string().trim().min(1).nullable(),
+              marketing_carrier_code: z.string().trim().min(1).nullable(),
+            }),
+          )
+          .min(1),
+      }),
+    }),
+  ),
+});
+
+/**
+ * Adaptador da Ignav que normaliza tarifas para o contrato da aplicação.
+ */
+@Injectable()
+export class IgnavService implements ConsultarPrecosVoo {
+  private readonly logger = new Logger(IgnavService.name);
+
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async consultarMenorPreco(rota: Rota): Promise<CotacaoDeVoo | null> {
+    const apiKey = this.configService.getOrThrow<string>('IGNAV_API_KEY');
+    const baseUrl = this.configService.getOrThrow<string>('IGNAV_BASE_URL');
+    const dataIda = this.formatarData(rota.dataIda);
+    const dataVolta = rota.dataVolta ? this.formatarData(rota.dataVolta) : null;
+
+    try {
+      const resposta = await firstValueFrom(
+        this.httpService.post<unknown>(
+          `${baseUrl.replace(/\/$/, '')}/fares/${
+            dataVolta ? 'round-trip' : 'one-way'
+          }`,
+          {
+            origin: rota.origem,
+            destination: rota.destino,
+            departure_date: dataIda,
+            ...(dataVolta ? { return_date: dataVolta } : {}),
+            adults: 1,
+            market: 'BR',
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Api-Key': apiKey,
+            },
+          },
+        ),
+      );
+
+      const resultado = respostaIgnavSchema.safeParse(resposta.data);
+      if (!resultado.success) {
+        this.registrarFalhaConsulta('resposta_invalida');
+        throw new ServiceUnavailableException(
+          MENSAGENS_ERRO.ignavConsultaIndisponivel,
+        );
+      }
+
+      const menorOferta = resultado.data.itineraries
+        .filter((itinerario) => itinerario.price.status === 'verified')
+        .reduce(
+          (menor, oferta) =>
+            !menor || oferta.price.amount < menor.price.amount ? oferta : menor,
+          undefined as (typeof resultado.data.itineraries)[number] | undefined,
+        );
+
+      if (!menorOferta) {
+        return null;
+      }
+
+      const companhia = this.identificarCompanhia(menorOferta);
+      if (!companhia) {
+        this.logger.warn(
+          JSON.stringify({
+            evento: 'ignav_companhia_nao_identificada',
+          }),
+        );
+        return null;
+      }
+
+      return {
+        preco: menorOferta.price.amount.toFixed(2),
+        moeda: menorOferta.price.currency,
+        companhia,
+      };
+    } catch (erro) {
+      if (erro instanceof ServiceUnavailableException) {
+        throw erro;
+      }
+
+      this.registrarFalhaConsulta('rede');
+      throw new ServiceUnavailableException(
+        MENSAGENS_ERRO.ignavConsultaIndisponivel,
+      );
+    }
+  }
+
+  private registrarFalhaConsulta(tipo: 'rede' | 'resposta_invalida'): void {
+    this.logger.error(
+      JSON.stringify({
+        evento: 'ignav_consulta_preco_falhou',
+        tipo,
+      }),
+    );
+  }
+
+  private identificarCompanhia(
+    oferta: z.infer<typeof respostaIgnavSchema>['itineraries'][number],
+  ): string | null {
+    if (oferta.outbound.carrier) {
+      return oferta.outbound.carrier;
+    }
+
+    const segmentoComCompanhia = oferta.outbound.segments.find(
+      (segmento) =>
+        segmento.operating_carrier_name || segmento.marketing_carrier_code,
+    );
+
+    return (
+      segmentoComCompanhia?.operating_carrier_name ??
+      segmentoComCompanhia?.marketing_carrier_code ??
+      null
+    );
+  }
+
+  private formatarData(data: Date): string {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+
+    return `${ano}-${mes}-${dia}`;
+  }
+}

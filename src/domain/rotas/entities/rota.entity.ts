@@ -113,7 +113,7 @@ export class HistoricoPrecoEntity {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.moedaInvalida);
     }
 
-    const companhia = dados.companhia.trim();
+    const companhia = dados.companhia.trim().replace(/ +/g, ' ');
     if (!companhia) {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaObrigatoria);
     }

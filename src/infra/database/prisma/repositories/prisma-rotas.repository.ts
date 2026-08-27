@@ -81,7 +81,7 @@ export class PrismaRotasRepository implements RotasRepository {
   ): Promise<HistoricoPreco | null> {
     const historico = await this.prisma.$transaction(async (transacao) => {
       await transacao.$executeRaw`
-        SELECT pg_advisory_xact_lock(hashtext(${dados.rotaId}))
+        SELECT pg_advisory_xact_lock(hashtextextended(${dados.rotaId}, 0))
       `;
 
       const ultimoHistorico = await transacao.historicoPreco.findFirst({
@@ -89,18 +89,13 @@ export class PrismaRotasRepository implements RotasRepository {
         orderBy: { coletadoEm: 'desc' },
       });
 
+      const ultimoHistoricoMapeado = ultimoHistorico
+        ? this.mapearHistorico(ultimoHistorico)
+        : null;
+
       if (
-        ultimoHistorico &&
-        HistoricoPrecoEntity.temMesmoValor(
-          {
-            preco: HistoricoPrecoEntity.normalizarPreco(
-              ultimoHistorico.preco.toString(),
-            ),
-            moeda: ultimoHistorico.moeda,
-            companhia: ultimoHistorico.companhia,
-          },
-          dados,
-        )
+        ultimoHistoricoMapeado &&
+        HistoricoPrecoEntity.temMesmoValor(ultimoHistoricoMapeado, dados)
       ) {
         return null;
       }

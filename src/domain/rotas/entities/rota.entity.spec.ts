@@ -42,6 +42,15 @@ describe('HistoricoPrecoEntity', () => {
     ).toBe(true);
   });
 
+  it('normaliza espaços internos no nome da companhia', () => {
+    expect(
+      HistoricoPrecoEntity.criar({
+        ...dados,
+        companhia: '  LATAM   Airlines  ',
+      }).companhia,
+    ).toBe('LATAM Airlines');
+  });
+
   it.each(['AAA', 'XXX', 'brl'])(
     'rejeita a moeda não suportada %s',
     (moeda) => {

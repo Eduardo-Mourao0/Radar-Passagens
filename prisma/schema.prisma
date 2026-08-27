@@ -8,15 +8,15 @@ datasource db {
 }
 
 model Rota {
-  id         String           @id @default(uuid())
-  chaveMonitoramento String   @unique
-  origem     String
-  destino    String
-  dataIda    DateTime
-  dataVolta  DateTime?
-  ativa      Boolean          @default(true)
-  criadoEm   DateTime         @default(now())
-  historicos HistoricoPreco[]
+  id                 String           @id @default(uuid())
+  chaveMonitoramento String           @unique
+  origem             String
+  destino            String
+  dataIda            DateTime
+  dataVolta          DateTime?
+  ativa              Boolean          @default(true)
+  criadoEm           DateTime         @default(now())
+  historicos         HistoricoPreco[]
 
   @@index([ativa])
 }
@@ -30,5 +30,5 @@ model HistoricoPreco {
   companhia  String
   coletadoEm DateTime @default(now())
 
-  @@index([rotaId, coletadoEm])
+  @@index([rotaId, coletadoEm(sort: Desc)])
 }

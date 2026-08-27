@@ -7,24 +7,22 @@ import { RegistrarHistoricoPrecoCommand } from '../commands/registrar-historico-
 
 @Injectable()
 export class RegistrarHistoricoPrecoUseCase {
-  constructor(@Inject(ROTAS_REPOSITORY) private readonly rotasRepository: RotasRepository) {}
+  constructor(
+    @Inject(ROTAS_REPOSITORY) private readonly rotasRepository: RotasRepository,
+  ) {}
 
   async execute(comando: RegistrarHistoricoPrecoCommand) {
     const rota = await this.rotasRepository.buscarPorId(comando.rotaId);
     if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
 
     const novoHistorico = HistoricoPrecoEntity.criar(comando);
+    const historico =
+      await this.rotasRepository.registrarHistoricoSeDiferente(novoHistorico);
 
-    const ultimoHistorico = await this.rotasRepository.buscarUltimoHistorico(rota.id);
-    if (
-      ultimoHistorico &&
-      ultimoHistorico.preco === novoHistorico.preco &&
-      ultimoHistorico.moeda === novoHistorico.moeda &&
-      ultimoHistorico.companhia === novoHistorico.companhia
-    ) {
+    if (!historico) {
       return { registrado: false };
     }
 
-    return { registrado: true, historico: await this.rotasRepository.criarHistorico(novoHistorico) };
+    return { registrado: true, historico };
   }
 }

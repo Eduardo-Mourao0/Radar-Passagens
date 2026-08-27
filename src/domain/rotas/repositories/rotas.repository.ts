@@ -1,4 +1,9 @@
-import { HistoricoPreco, NovaRota, NovoHistoricoPreco, Rota } from '../entities/rota.entity';
+import {
+  HistoricoPreco,
+  NovaRota,
+  NovoHistoricoPreco,
+  Rota,
+} from '../entities/rota.entity';
 
 export const ROTAS_REPOSITORY = Symbol('ROTAS_REPOSITORY');
 
@@ -10,6 +15,7 @@ export interface RotasRepository {
   listarAtivas(): Promise<Rota[]>;
   buscarPorId(id: string): Promise<Rota | null>;
   listarHistorico(rotaId: string): Promise<HistoricoPreco[]>;
-  buscarUltimoHistorico(rotaId: string): Promise<HistoricoPreco | null>;
-  criarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco>;
+  registrarHistoricoSeDiferente(
+    dados: NovoHistoricoPreco,
+  ): Promise<HistoricoPreco | null>;
 }

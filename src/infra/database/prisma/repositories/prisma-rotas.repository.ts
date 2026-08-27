@@ -4,7 +4,13 @@ import {
 } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { HistoricoPreco, NovaRota, NovoHistoricoPreco, Rota } from '../../../../domain/rotas/entities/rota.entity';
+import {
+  HistoricoPreco,
+  HistoricoPrecoEntity,
+  NovaRota,
+  NovoHistoricoPreco,
+  Rota,
+} from '../../../../domain/rotas/entities/rota.entity';
 import { RotasRepository } from '../../../../domain/rotas/repositories/rotas.repository';
 
 @Injectable()
@@ -70,19 +76,34 @@ export class PrismaRotasRepository implements RotasRepository {
     return historicos.map((historico) => this.mapearHistorico(historico));
   }
 
-  async buscarUltimoHistorico(rotaId: string): Promise<HistoricoPreco | null> {
-    const historico = await this.prisma.historicoPreco.findFirst({
-      where: { rotaId },
-      orderBy: { coletadoEm: 'desc' },
+  async registrarHistoricoSeDiferente(
+    dados: NovoHistoricoPreco,
+  ): Promise<HistoricoPreco | null> {
+    const historico = await this.prisma.$transaction(async (transacao) => {
+      await transacao.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtextextended(${dados.rotaId}, 0))
+      `;
+
+      const ultimoHistorico = await transacao.historicoPreco.findFirst({
+        where: { rotaId: dados.rotaId },
+        orderBy: { coletadoEm: 'desc' },
+      });
+
+      const ultimoHistoricoMapeado = ultimoHistorico
+        ? this.mapearHistorico(ultimoHistorico)
+        : null;
+
+      if (
+        ultimoHistoricoMapeado &&
+        HistoricoPrecoEntity.temMesmoValor(ultimoHistoricoMapeado, dados)
+      ) {
+        return null;
+      }
+
+      return transacao.historicoPreco.create({ data: dados });
     });
 
     return historico ? this.mapearHistorico(historico) : null;
-  }
-
-  async criarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco> {
-    const historico = await this.prisma.historicoPreco.create({ data: dados });
-
-    return this.mapearHistorico(historico);
   }
 
   private mapearRota(rota: PrismaRota): Rota {
@@ -102,7 +123,7 @@ export class PrismaRotasRepository implements RotasRepository {
     return {
       id: historico.id,
       rotaId: historico.rotaId,
-      preco: historico.preco.toString(),
+      preco: HistoricoPrecoEntity.normalizarPreco(historico.preco.toString()),
       moeda: historico.moeda,
       companhia: historico.companhia,
       coletadoEm: historico.coletadoEm,

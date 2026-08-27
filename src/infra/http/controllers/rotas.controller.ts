@@ -21,7 +21,7 @@ export class RotasController {
   ) {}
 
   @Post()
-  async criar(
+  criar(
     @Body(new ZodValidationPipe(criarRotaSchema))
     criarRotaInput: CriarRotaInput,
   ) {

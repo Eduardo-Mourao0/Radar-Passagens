@@ -196,6 +196,43 @@ describe('AmadeusService', () => {
     await expect(service.consultarMenorPreco(rota)).resolves.toBeNull();
   });
 
+  it('registra aviso e usa o código quando a companhia não vem no dicionário', async () => {
+    const httpService = {
+      post: jest
+        .fn()
+        .mockReturnValue(
+          of({ data: { access_token: 'token-1', expires_in: 1_800 } }),
+        ),
+      get: jest.fn().mockReturnValue(
+        of({
+          data: {
+            data: [
+              {
+                price: { total: '350.00', currency: 'BRL' },
+                itineraries: [{ segments: [{ carrierCode: 'AD' }] }],
+              },
+            ],
+          },
+        }),
+      ),
+    } as unknown as HttpService;
+    const service = new AmadeusService(httpService, configService);
+    const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+    await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
+      preco: '350.00',
+      moeda: 'BRL',
+      companhia: 'AD',
+    });
+    expect(warnLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'amadeus_companhia_nao_encontrada',
+        codigoCompanhia: 'AD',
+      }),
+    );
+    warnLog.mockRestore();
+  });
+
   it('rejeita uma resposta de ofertas malformada', async () => {
     const httpService = {
       post: jest

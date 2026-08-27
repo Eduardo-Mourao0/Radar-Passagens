@@ -11,6 +11,8 @@ import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.r
  */
 @Injectable()
 export class PriceCheckJob {
+  private static readonly CONCORRENCIA_MAXIMA = 5;
+
   private readonly logger = new Logger(PriceCheckJob.name);
 
   constructor(
@@ -22,42 +24,65 @@ export class PriceCheckJob {
 
   @Cron(CronExpression.EVERY_6_HOURS)
   async executar(): Promise<void> {
-    const rotas = await this.rotasRepository.listarAtivas();
+    const rotasPendentes = [...(await this.rotasRepository.listarAtivas())];
+    const quantidadeDeTrabalhadores = Math.min(
+      PriceCheckJob.CONCORRENCIA_MAXIMA,
+      rotasPendentes.length,
+    );
 
-    for (const rota of rotas) {
-      try {
-        const cotacao = await this.consultarPrecosVoo.consultarMenorPreco(rota);
+    await Promise.all(
+      Array.from({ length: quantidadeDeTrabalhadores }, () =>
+        this.processarRotasPendentes(rotasPendentes),
+      ),
+    );
+  }
 
-        if (!cotacao) {
-          this.logger.warn(
-            JSON.stringify({
-              evento: 'nenhuma_oferta_encontrada',
-              rotaId: rota.id,
-            }),
-          );
-          continue;
-        }
+  private async processarRotasPendentes(
+    rotasPendentes: Awaited<ReturnType<RotasRepository['listarAtivas']>>,
+  ): Promise<void> {
+    while (rotasPendentes.length > 0) {
+      const rota = rotasPendentes.shift();
+      if (!rota) return;
 
-        const resultado = await this.registrarHistoricoPreco.execute({
-          rotaId: rota.id,
-          ...cotacao,
-        });
+      await this.verificarRota(rota);
+    }
+  }
 
+  private async verificarRota(
+    rota: Awaited<ReturnType<RotasRepository['listarAtivas']>>[number],
+  ): Promise<void> {
+    try {
+      const cotacao = await this.consultarPrecosVoo.consultarMenorPreco(rota);
+
+      if (!cotacao) {
         this.logger.log(
           JSON.stringify({
-            evento: 'verificacao_preco_concluida',
-            rotaId: rota.id,
-            historicoRegistrado: resultado.registrado,
-          }),
-        );
-      } catch {
-        this.logger.error(
-          JSON.stringify({
-            evento: 'verificacao_preco_falhou',
+            evento: 'nenhuma_oferta_encontrada',
             rotaId: rota.id,
           }),
         );
+        return;
       }
+
+      const resultado = await this.registrarHistoricoPreco.execute({
+        rotaId: rota.id,
+        ...cotacao,
+      });
+
+      this.logger.log(
+        JSON.stringify({
+          evento: 'verificacao_preco_concluida',
+          rotaId: rota.id,
+          historicoRegistrado: resultado.registrado,
+        }),
+      );
+    } catch {
+      this.logger.error(
+        JSON.stringify({
+          evento: 'verificacao_preco_falhou',
+          rotaId: rota.id,
+        }),
+      );
     }
   }
 }

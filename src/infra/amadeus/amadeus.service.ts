@@ -128,13 +128,21 @@ export class AmadeusService implements ConsultarPrecosVoo {
 
       const codigoCompanhia =
         menorOferta.itineraries[0].segments[0].carrierCode;
+      const companhia = ofertas.data.dictionaries?.carriers?.[codigoCompanhia];
+
+      if (!companhia) {
+        this.logger.warn(
+          JSON.stringify({
+            evento: 'amadeus_companhia_nao_encontrada',
+            codigoCompanhia,
+          }),
+        );
+      }
 
       return {
         preco: menorOferta.price.total,
         moeda: menorOferta.price.currency,
-        companhia:
-          ofertas.data.dictionaries?.carriers?.[codigoCompanhia] ??
-          codigoCompanhia,
+        companhia: companhia ?? codigoCompanhia,
       };
     } catch (erro) {
       if (erro instanceof ServiceUnavailableException) {

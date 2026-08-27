@@ -77,9 +77,36 @@ describe('AmadeusService', () => {
     expect(httpService.post).toHaveBeenCalledTimes(1);
   });
 
-  it('não expõe detalhes quando a autenticação externa falha', async () => {
+  it('não expõe credenciais quando a autenticação externa falha', async () => {
     const httpService = {
-      post: jest.fn().mockReturnValue(throwError(() => new Error('timeout'))),
+      post: jest
+        .fn()
+        .mockReturnValue(
+          throwError(() => new Error('timeout client-id client-secret')),
+        ),
+    } as unknown as HttpService;
+    const service = new AmadeusService(httpService, configService);
+
+    const erro = await service.obterToken().catch((erro: unknown) => erro);
+
+    expect(erro).toBeInstanceOf(ServiceUnavailableException);
+    expect(
+      JSON.stringify((erro as ServiceUnavailableException).getResponse()),
+    ).not.toContain('client-id');
+    expect(
+      JSON.stringify((erro as ServiceUnavailableException).getResponse()),
+    ).not.toContain('client-secret');
+  });
+
+  it.each([
+    ['token vazio', { access_token: '   ', expires_in: 1_800 }],
+    ['token não textual', { access_token: 123, expires_in: 1_800 }],
+    ['expiração zero', { access_token: 'token-1', expires_in: 0 }],
+    ['expiração negativa', { access_token: 'token-1', expires_in: -1 }],
+    ['campos obrigatórios ausentes', {}],
+  ])('rejeita resposta com %s', async (_, resposta) => {
+    const httpService = {
+      post: jest.fn().mockReturnValue(of({ data: resposta })),
     } as unknown as HttpService;
     const service = new AmadeusService(httpService, configService);
 

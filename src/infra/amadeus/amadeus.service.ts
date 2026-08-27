@@ -79,7 +79,8 @@ export class AmadeusService {
       );
 
       if (
-        !resposta.data.access_token ||
+        typeof resposta.data.access_token !== 'string' ||
+        !resposta.data.access_token.trim() ||
         !Number.isFinite(resposta.data.expires_in) ||
         resposta.data.expires_in <= 0
       ) {

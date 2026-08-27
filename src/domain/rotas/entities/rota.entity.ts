@@ -96,7 +96,7 @@ export class HistoricoPrecoEntity {
   private static readonly NOME_COMPANHIA_VALIDO = /^[\p{L}\p{N} .&'-]+$/u;
 
   static criar(dados: DadosNovoHistoricoPreco): NovoHistoricoPreco {
-    // Uma coleta sem preço não permite monitoramento confiável da tarifa.
+    // Preço zero representa cotação ausente ou inválida, não uma tarifa monitorável.
     if (
       !/^(?:[1-9]\d{0,7}(?:\.\d{1,2})?|0\.(?:0[1-9]|[1-9]\d?))$/.test(
         dados.preco,

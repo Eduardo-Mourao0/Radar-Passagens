@@ -1,108 +1,98 @@
-# RadarPassagens ✈️
+# RadarPassagens
 
-Serviço backend que monitora preços de passagens aéreas para rotas de interesse, consumindo a API da **Amadeus for Developers**. Cadastre uma rota (origem, destino, datas) e o sistema consulta os preços periodicamente, mantendo um histórico para acompanhar variações e encontrar a melhor oportunidade de compra.
+Backend para cadastrar rotas aéreas e manter o histórico de preços de passagens. O projeto é construído em NestJS, com PostgreSQL e Prisma, e foi organizado em camadas para manter as regras de negócio independentes de HTTP e banco de dados.
 
-## 💡 Motivação
+> A integração com a Amadeus e o job agendado já possuem a estrutura inicial, mas a consulta automática de preços ainda está em desenvolvimento.
 
-Projeto pessoal para resolver um problema real: acompanhar manualmente a variação de preços de passagens é repetitivo e fácil de perder o timing. O RadarPassagens automatiza essa busca e mantém um histórico consultável.
+## Tecnologias
 
-## 🚀 Tecnologias
+- Node.js e TypeScript
+- NestJS 11
+- PostgreSQL 16
+- Prisma ORM
+- Zod para validação de entradas HTTP
+- Docker Compose para o ambiente local do banco
 
-- **NestJS** — framework backend (Node.js/TypeScript)
-- **Prisma ORM** — modelagem e acesso ao banco
-- **PostgreSQL** — persistência dos dados
-- **Docker** — ambiente de banco de dados
-- **@nestjs/schedule** — jobs agendados (cron)
-- **@nestjs/axios** — requisições HTTP
-- **Amadeus API** — fonte de dados de voos (OAuth2, tier sandbox/gratuito)
+## Arquitetura
 
-## 🧱 Arquitetura
-
-```
+```text
 src/
-├── amadeus/        # Integração com a API da Amadeus (OAuth2 + busca de voos)
-├── rotas/          # CRUD de rotas monitoradas + histórico de preços
-│   ├── rota.controller.ts
-│   ├── rota.service.ts
-│   └── price-check.job.ts   # Job agendado que verifica preços periodicamente
-├── prisma/         # PrismaService e schema
-└── app.module.ts
+├── application/              # Casos de uso e comandos da aplicação
+│   └── rotas/
+├── domain/                   # Entidades, erros e contratos de repositório
+│   └── rotas/
+├── infra/                    # Adaptadores: HTTP, Prisma e Amadeus
+│   ├── database/prisma/
+│   ├── http/
+│   └── amadeus/
+└── main/                     # Bootstrap e composição dos módulos NestJS
 ```
 
-### Modelo de dados
+O domínio depende apenas de abstrações. Por exemplo, os casos de uso recebem o contrato `RotasRepository`; a implementação com Prisma fica em `infra/database`.
 
-```prisma
-model Rota {
-  id         String   @id @default(uuid())
-  origem     String   // código IATA, ex: "BSB"
-  destino    String   // ex: "GRU"
-  dataIda    DateTime
-  dataVolta  DateTime?
-  ativa      Boolean  @default(true)
-  criadoEm   DateTime @default(now())
-  historicos HistoricoPreco[]
-}
+## Pré-requisitos
 
-model HistoricoPreco {
-  id         String   @id @default(uuid())
-  rotaId     String
-  rota       Rota     @relation(fields: [rotaId], references: [id])
-  preco      Decimal
-  moeda      String
-  companhia  String
-  coletadoEm DateTime @default(now())
-}
-```
+- Node.js 20 ou superior
+- Docker Desktop com Docker Compose
 
-## ⚙️ Funcionalidades
-
-- Cadastro de rotas de interesse (origem, destino, datas de ida/volta)
-- Job agendado que consulta a Amadeus periodicamente e salva o menor preço encontrado
-- Histórico de preços por rota, com data de coleta
-- Autenticação OAuth2 client credentials com cache de token
-
-## 📦 Como rodar localmente
-
-### Pré-requisitos
-- Node.js
-- Docker
-- Conta gratuita na [Amadeus for Developers](https://developers.amadeus.com) (sandbox)
-
-### Passos
+## Como executar
 
 ```bash
-# Clonar o repositório
-git clone https://github.com/Eduardo-Mourao0/radar-passagens.git
-cd radar-passagens
-
-# Instalar dependências
+git clone https://github.com/Eduardo-Mourao0/Radar-Passagens.git
+cd Radar-Passagens
 npm install
+```
 
-# Subir o banco de dados
+Crie o arquivo de ambiente a partir do exemplo:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Suba o PostgreSQL e aplique as migrations:
+
+```bash
 docker compose up -d
-
-# Configurar variáveis de ambiente
-cp .env.example .env
-# preencher DATABASE_URL, AMADEUS_CLIENT_ID e AMADEUS_CLIENT_SECRET
-
-# Rodar as migrations
 npx prisma migrate dev
+```
 
-# Iniciar o servidor
+Por fim, inicie a API:
+
+```bash
 npm run start:dev
 ```
 
-## 📡 Endpoints
+A aplicação fica disponível em `http://localhost:3000`.
 
-| Método | Rota                    | Descrição                              |
-|--------|--------------------------|-----------------------------------------|
-| POST   | `/rotas`                 | Cadastra uma nova rota para monitorar   |
-| GET    | `/rotas/:id/historico`   | Retorna o histórico de preços da rota   |
+## Variáveis de ambiente
 
-### Exemplo de requisição
+O arquivo `.env.example` contém valores locais prontos para o Docker.
 
-```json
+| Variável            | Descrição                            |
+| ------------------- | ------------------------------------ |
+| `PORT`              | Porta HTTP da API. Padrão: `3000`.   |
+| `POSTGRES_USER`     | Usuário do PostgreSQL no container.  |
+| `POSTGRES_PASSWORD` | Senha do PostgreSQL no container.    |
+| `POSTGRES_DB`       | Nome do banco de dados.              |
+| `POSTGRES_PORT`     | Porta exposta pelo PostgreSQL.       |
+| `DATABASE_URL`      | String de conexão usada pelo Prisma. |
+
+Nunca envie o arquivo `.env` para o repositório.
+
+## Endpoints disponíveis
+
+| Método | Rota                   | Descrição                              |
+| ------ | ---------------------- | -------------------------------------- |
+| `POST` | `/rotas`               | Cadastra uma rota para monitoramento.  |
+| `GET`  | `/rotas`               | Lista as rotas cadastradas.            |
+| `GET`  | `/rotas/:id/historico` | Retorna o histórico de preços da rota. |
+
+### Criar rota
+
+```http
 POST /rotas
+Content-Type: application/json
+
 {
   "origem": "BSB",
   "destino": "GRU",
@@ -111,14 +101,58 @@ POST /rotas
 }
 ```
 
-## 🗺️ Próximos passos
+Regras aplicadas no cadastro:
 
-- Endpoint de variação percentual de preço
-- Alertas (e-mail/notificação) quando o preço cair abaixo de um valor definido
-- Suporte a múltiplas datas por rota (busca de janela de preços)
+- origem e destino devem ser códigos IATA de três letras maiúsculas e diferentes;
+- a ida deve ser hoje ou uma data futura;
+- a volta, quando informada, não pode ser anterior à ida;
+- uma rota idêntica ativa não pode ser cadastrada novamente;
+- ao cadastrar novamente uma rota idêntica inativa, ela é reativada.
 
-## 👤 Autor
+### Respostas de erro
 
-**Eduardo Mourão**
-Estudante de Engenharia de Software (UCB) | Backend Developer
-[GitHub](https://github.com/Eduardo-Mourao0)
+- `400 Bad Request`: formato inválido ou regra de negócio não atendida;
+- `404 Not Found`: rota não encontrada ao consultar histórico;
+- `409 Conflict`: rota idêntica já está ativa.
+
+## Dados persistidos
+
+Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada `HistoricoPreco` pertence a uma rota e armazena preço decimal, moeda, companhia e horário da coleta.
+
+O histórico usa o índice `(rotaId, coletadoEm DESC)` para consultas eficientes dos registros mais recentes.
+
+## Comandos úteis
+
+```bash
+# Desenvolvimento
+npm run start:dev
+
+# Build de produção
+npm run build
+
+# Testes unitários
+npm test
+
+# Testes end-to-end
+npm run test:e2e
+
+# Gerar cliente Prisma
+npm run prisma:generate
+
+# Criar migration após alterar prisma/schema.prisma
+npx prisma migrate dev --name descricao_da_mudanca
+
+# Interface visual do banco
+npm run prisma:studio
+```
+
+## Próximos passos
+
+- Implementar autenticação OAuth2 e busca de ofertas pela API Amadeus.
+- Executar a coleta periódica pelo job agendado.
+- Registrar preços encontrados usando o caso de uso de histórico.
+- Adicionar alertas para quedas de preço.
+
+## Autor
+
+Eduardo Mourão — [GitHub](https://github.com/Eduardo-Mourao0)

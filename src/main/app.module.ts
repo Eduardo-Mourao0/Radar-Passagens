@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER } from '@nestjs/core';
 import { AppController } from '../infra/http/controllers/app.controller';
 import { AppService } from '../infra/http/controllers/app.service';
 import { AmadeusModule } from '../infra/amadeus/amadeus.module';
 import { PrismaModule } from '../infra/database/prisma/prisma.module';
+import { RegraDeNegocioExceptionFilter } from '../infra/http/filters/regra-de-negocio-exception.filter';
 import { RotasModule } from './modules/rotas.module';
 
 @Module({
@@ -17,6 +19,12 @@ import { RotasModule } from './modules/rotas.module';
     RotasModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_FILTER,
+      useClass: RegraDeNegocioExceptionFilter,
+    },
+  ],
 })
 export class AppModule {}

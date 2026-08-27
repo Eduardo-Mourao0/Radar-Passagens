@@ -22,7 +22,8 @@ export class RotasController {
 
   @Post()
   criar(
-    @Body(new ZodValidationPipe(criarRotaSchema)) criarRotaInput: CriarRotaInput,
+    @Body(new ZodValidationPipe(criarRotaSchema))
+    criarRotaInput: CriarRotaInput,
   ) {
     return this.criarRotaUseCase.execute(criarRotaInput);
   }

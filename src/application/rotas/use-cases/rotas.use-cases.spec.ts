@@ -1,5 +1,6 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { RegraDeNegocioError } from '../../../domain/errors/regra-de-negocio.error';
 import {
   ROTAS_REPOSITORY,
   RotasRepository,
@@ -34,6 +35,7 @@ describe('Casos de uso de rotas', () => {
       listarAtivas: jest.fn(),
       buscarPorId: jest.fn(),
       listarHistorico: jest.fn(),
+      registrarHistoricoSeDiferente: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -93,7 +95,7 @@ describe('Casos de uso de rotas', () => {
         destino: 'BSB',
         dataIda: '2000-01-01',
       }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toBeInstanceOf(RegraDeNegocioError);
     expect(repositorio.buscarPorChave).not.toHaveBeenCalled();
   });
 

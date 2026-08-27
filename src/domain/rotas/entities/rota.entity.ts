@@ -81,3 +81,64 @@ export type HistoricoPreco = Readonly<{
   companhia: string;
   coletadoEm: Date;
 }>;
+
+export type DadosNovoHistoricoPreco = Readonly<{
+  rotaId: string;
+  preco: string;
+  moeda: string;
+  companhia: string;
+}>;
+
+export type NovoHistoricoPreco = DadosNovoHistoricoPreco;
+
+export class HistoricoPrecoEntity {
+  private static readonly MOEDAS_SUPORTADAS = ['BRL', 'USD', 'EUR'] as const;
+  private static readonly NOME_COMPANHIA_VALIDO = /^[\p{L}\p{N} .&'-]+$/u;
+
+  static criar(dados: DadosNovoHistoricoPreco): NovoHistoricoPreco {
+    // Preço zero representa cotação ausente ou inválida, não uma tarifa monitorável.
+    if (
+      !/^(?:[1-9]\d{0,7}(?:\.\d{1,2})?|0\.(?:0[1-9]|[1-9]\d?))$/.test(
+        dados.preco,
+      )
+    ) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.precoInvalido);
+    }
+
+    if (
+      !this.MOEDAS_SUPORTADAS.includes(
+        dados.moeda as (typeof this.MOEDAS_SUPORTADAS)[number],
+      )
+    ) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.moedaInvalida);
+    }
+
+    const companhia = dados.companhia.trim().replace(/ +/g, ' ');
+    if (!companhia) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaObrigatoria);
+    }
+
+    if (companhia.length > 100 || !this.NOME_COMPANHIA_VALIDO.test(companhia)) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaInvalida);
+    }
+
+    return { ...dados, preco: this.normalizarPreco(dados.preco), companhia };
+  }
+
+  static normalizarPreco(preco: string): string {
+    const [parteInteira, parteDecimal = ''] = preco.split('.');
+
+    return `${parteInteira}.${parteDecimal.padEnd(2, '0')}`;
+  }
+
+  static temMesmoValor(
+    historico: Pick<HistoricoPreco, 'preco' | 'moeda' | 'companhia'>,
+    outro: Pick<NovoHistoricoPreco, 'preco' | 'moeda' | 'companhia'>,
+  ): boolean {
+    return (
+      historico.preco === outro.preco &&
+      historico.moeda === outro.moeda &&
+      historico.companhia === outro.companhia
+    );
+  }
+}

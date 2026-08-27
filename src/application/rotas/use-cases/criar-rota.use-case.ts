@@ -1,4 +1,5 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common';
+import { RegraDeNegocioError } from '../../../domain/errors/regra-de-negocio.error';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import { RotaEntity } from '../../../domain/rotas/entities/rota.entity';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
@@ -13,7 +14,17 @@ export class CriarRotaUseCase {
   ) {}
 
   async execute(comando: CriarRotaCommand) {
-    const novaRota = RotaEntity.criarNova(comando);
+    let novaRota;
+
+    try {
+      novaRota = RotaEntity.criarNova(comando);
+    } catch (erro) {
+      if (erro instanceof RegraDeNegocioError) {
+        throw new BadRequestException(erro.message);
+      }
+
+      throw erro;
+    }
 
     const rotaExistente = await this.rotasRepository.buscarPorChave(
       novaRota.chaveMonitoramento,

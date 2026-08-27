@@ -68,17 +68,14 @@ A aplicação fica disponível em `http://localhost:3000`.
 
 O arquivo `.env.example` contém valores locais prontos para o Docker.
 
-| Variável                | Descrição                            |
-| ----------------------- | ------------------------------------ |
-| `PORT`                  | Porta HTTP da API. Padrão: `3000`.   |
-| `POSTGRES_USER`         | Usuário do PostgreSQL no container.  |
-| `POSTGRES_PASSWORD`     | Senha do PostgreSQL no container.    |
-| `POSTGRES_DB`           | Nome do banco de dados.              |
-| `POSTGRES_PORT`         | Porta exposta pelo PostgreSQL.       |
-| `DATABASE_URL`          | String de conexão usada pelo Prisma. |
-| `AMADEUS_CLIENT_ID`     | Chave de API da Amadeus.             |
-| `AMADEUS_CLIENT_SECRET` | Segredo da API da Amadeus.           |
-| `AMADEUS_BASE_URL`      | URL do ambiente Amadeus.             |
+| Variável            | Descrição                            |
+| ------------------- | ------------------------------------ |
+| `PORT`              | Porta HTTP da API. Padrão: `3000`.   |
+| `POSTGRES_USER`     | Usuário do PostgreSQL no container.  |
+| `POSTGRES_PASSWORD` | Senha do PostgreSQL no container.    |
+| `POSTGRES_DB`       | Nome do banco de dados.              |
+| `POSTGRES_PORT`     | Porta exposta pelo PostgreSQL.       |
+| `DATABASE_URL`      | String de conexão usada pelo Prisma. |
 
 Nunca envie o arquivo `.env` para o repositório.
 

@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import {
   ROTAS_REPOSITORY,
 } from '../../../domain/rotas/repositories/rotas.repository';
@@ -15,7 +16,7 @@ export class ListarHistoricoRotaUseCase {
     const rota = await this.rotasRepository.buscarPorId(rotaId);
 
     if (!rota) {
-      throw new NotFoundException('Rota não encontrada.');
+      throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
     }
 
     return this.rotasRepository.listarHistorico(rotaId);

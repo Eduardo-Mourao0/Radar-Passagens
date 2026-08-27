@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 import { z } from 'zod';
+import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 
 @Injectable()
 export class ZodValidationPipe implements PipeTransform {
@@ -10,7 +11,7 @@ export class ZodValidationPipe implements PipeTransform {
 
     if (!resultado.success) {
       throw new BadRequestException({
-        message: 'Dados de entrada inválidos.',
+        message: MENSAGENS_ERRO.dadosEntradaInvalidos,
         errors: resultado.error.issues.map(({ path, message }) => ({
           field: path.join('.'),
           message,

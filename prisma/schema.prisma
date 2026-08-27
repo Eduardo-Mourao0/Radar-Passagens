@@ -9,6 +9,7 @@ datasource db {
 
 model Rota {
   id         String           @id @default(uuid())
+  chaveMonitoramento String   @unique
   origem     String
   destino    String
   dataIda    DateTime

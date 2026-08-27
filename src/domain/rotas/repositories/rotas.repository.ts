@@ -1,18 +1,13 @@
-import { HistoricoPreco, Rota } from '../entities/rota.entity';
+import { HistoricoPreco, NovaRota, Rota } from '../entities/rota.entity';
 
 export const ROTAS_REPOSITORY = Symbol('ROTAS_REPOSITORY');
 
-export type NovaRota = Readonly<{
-  origem: string;
-  destino: string;
-  dataIda: Date;
-  dataVolta: Date | null;
-}>;
-
 export interface RotasRepository {
-  buscarDuplicada(dados: NovaRota): Promise<Rota | null>;
+  buscarPorChave(chaveMonitoramento: string): Promise<Rota | null>;
   criar(dados: NovaRota): Promise<Rota>;
+  reativar(id: string): Promise<Rota>;
   listar(): Promise<Rota[]>;
+  listarAtivas(): Promise<Rota[]>;
   buscarPorId(id: string): Promise<Rota | null>;
   listarHistorico(rotaId: string): Promise<HistoricoPreco[]>;
 }

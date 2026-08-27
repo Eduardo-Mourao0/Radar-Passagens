@@ -96,6 +96,7 @@ export class HistoricoPrecoEntity {
   private static readonly NOME_COMPANHIA_VALIDO = /^[\p{L}\p{N} .&'-]+$/u;
 
   static criar(dados: DadosNovoHistoricoPreco): NovoHistoricoPreco {
+    // Uma coleta sem preço não permite monitoramento confiável da tarifa.
     if (
       !/^(?:[1-9]\d{0,7}(?:\.\d{1,2})?|0\.(?:0[1-9]|[1-9]\d?))$/.test(
         dados.preco,
@@ -117,14 +118,17 @@ export class HistoricoPrecoEntity {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaObrigatoria);
     }
 
-    if (
-      companhia.length > 100 ||
-      !this.NOME_COMPANHIA_VALIDO.test(companhia)
-    ) {
+    if (companhia.length > 100 || !this.NOME_COMPANHIA_VALIDO.test(companhia)) {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaInvalida);
     }
 
-    return { ...dados, companhia };
+    return { ...dados, preco: this.normalizarPreco(dados.preco), companhia };
+  }
+
+  static normalizarPreco(preco: string): string {
+    const [parteInteira, parteDecimal = ''] = preco.split('.');
+
+    return `${parteInteira}.${parteDecimal.padEnd(2, '0')}`;
   }
 
   static temMesmoValor(

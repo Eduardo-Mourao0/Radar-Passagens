@@ -93,7 +93,9 @@ export class PrismaRotasRepository implements RotasRepository {
         ultimoHistorico &&
         HistoricoPrecoEntity.temMesmoValor(
           {
-            preco: ultimoHistorico.preco.toString(),
+            preco: HistoricoPrecoEntity.normalizarPreco(
+              ultimoHistorico.preco.toString(),
+            ),
             moeda: ultimoHistorico.moeda,
             companhia: ultimoHistorico.companhia,
           },
@@ -126,7 +128,7 @@ export class PrismaRotasRepository implements RotasRepository {
     return {
       id: historico.id,
       rotaId: historico.rotaId,
-      preco: historico.preco.toString(),
+      preco: HistoricoPrecoEntity.normalizarPreco(historico.preco.toString()),
       moeda: historico.moeda,
       companhia: historico.companhia,
       coletadoEm: historico.coletadoEm,

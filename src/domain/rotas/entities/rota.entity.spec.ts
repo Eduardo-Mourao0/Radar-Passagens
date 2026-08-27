@@ -19,10 +19,27 @@ describe('HistoricoPrecoEntity', () => {
   );
 
   it('aceita o maior preço suportado pelo campo Decimal(10, 2)', () => {
-    expect(HistoricoPrecoEntity.criar({ ...dados, preco: '99999999.99' })).toEqual({
+    expect(
+      HistoricoPrecoEntity.criar({ ...dados, preco: '99999999.99' }),
+    ).toEqual({
       ...dados,
       preco: '99999999.99',
     });
+  });
+
+  it('normaliza o preço para duas casas decimais antes de comparar', () => {
+    const novoHistorico = HistoricoPrecoEntity.criar({
+      ...dados,
+      preco: '100',
+    });
+
+    expect(novoHistorico.preco).toBe('100.00');
+    expect(
+      HistoricoPrecoEntity.temMesmoValor(
+        { preco: '100.00', moeda: 'BRL', companhia: 'LATAM' },
+        novoHistorico,
+      ),
+    ).toBe(true);
   });
 
   it.each(['AAA', 'XXX', 'brl'])(

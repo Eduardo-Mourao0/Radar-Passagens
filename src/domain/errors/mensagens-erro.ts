@@ -14,3 +14,15 @@ export const MENSAGENS_ERRO = {
   companhiaInvalida:
     'companhia deve ter no máximo 100 caracteres e conter apenas letras, números, espaços, hífens, apóstrofos, pontos ou &.',
 } as const;
+
+export const MENSAGENS_ERRO_PUBLICAS = new Set<string>([
+  MENSAGENS_ERRO.origemDestinoIguais,
+  MENSAGENS_ERRO.dataIdaPassada,
+  MENSAGENS_ERRO.dataVoltaAnterior,
+  MENSAGENS_ERRO.dataInvalida('dataIda'),
+  MENSAGENS_ERRO.dataInvalida('dataVolta'),
+  MENSAGENS_ERRO.precoInvalido,
+  MENSAGENS_ERRO.moedaInvalida,
+  MENSAGENS_ERRO.companhiaObrigatoria,
+  MENSAGENS_ERRO.companhiaInvalida,
+]);

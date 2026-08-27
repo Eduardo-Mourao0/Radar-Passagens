@@ -86,32 +86,36 @@ export class IgnavService implements ConsultarPrecosVoo {
         );
       }
 
-      const menorOferta = resultado.data.itineraries
-        .filter((itinerario) => itinerario.price.status === 'verified')
-        .reduce(
-          (menor, oferta) =>
-            !menor || oferta.price.amount < menor.price.amount ? oferta : menor,
-          undefined as (typeof resultado.data.itineraries)[number] | undefined,
-        );
+      const menorOferta = resultado.data.itineraries.reduce(
+        (menor, oferta) => {
+          if (oferta.price.status !== 'verified') {
+            return menor;
+          }
+
+          return !menor || oferta.price.amount < menor.price.amount
+            ? oferta
+            : menor;
+        },
+        undefined as (typeof resultado.data.itineraries)[number] | undefined,
+      );
 
       if (!menorOferta) {
         return null;
       }
 
-      const companhia = this.identificarCompanhia(menorOferta);
-      if (!companhia) {
+      const companhiaIdentificada = this.identificarCompanhia(menorOferta);
+      if (!companhiaIdentificada) {
         this.logger.warn(
           JSON.stringify({
             evento: 'ignav_companhia_nao_identificada',
           }),
         );
-        return null;
       }
 
       return {
         preco: menorOferta.price.amount.toFixed(2),
         moeda: menorOferta.price.currency,
-        companhia,
+        companhia: companhiaIdentificada ?? 'Companhia não identificada',
       };
     } catch (erro) {
       if (erro instanceof ServiceUnavailableException) {

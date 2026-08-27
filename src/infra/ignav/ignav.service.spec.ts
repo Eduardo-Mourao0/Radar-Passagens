@@ -213,6 +213,42 @@ describe('IgnavService', () => {
     });
   });
 
+  it('mantém a tarifa com uma companhia genérica quando a resposta não a identifica', async () => {
+    const httpService = {
+      post: jest.fn().mockReturnValue(
+        of({
+          data: {
+            itineraries: [
+              {
+                price: { amount: 350, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: null,
+                      marketing_carrier_code: null,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        }),
+      ),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+    const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+
+    await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
+      preco: '350.00',
+      moeda: 'BRL',
+      companhia: 'Companhia não identificada',
+    });
+    expect(warnLog).toHaveBeenCalledWith(
+      JSON.stringify({ evento: 'ignav_companhia_nao_identificada' }),
+    );
+    warnLog.mockRestore();
+  });
+
   it('não expõe a chave de API quando a consulta falha', async () => {
     const httpService = {
       post: jest

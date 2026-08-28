@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
+import { DesativarRotaUseCase } from '../../../application/rotas/use-cases/desativar-rota.use-case';
 import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
@@ -10,6 +11,7 @@ import { RotasController } from './rotas.controller';
 
 describe('RotasController', () => {
   const criarRotaUseCase = { execute: jest.fn() };
+  const desativarRotaUseCase = { execute: jest.fn() };
   const configurarAlertaPrecoUseCase = { execute: jest.fn() };
   const listarRotasUseCase = { execute: jest.fn() };
   const listarHistoricoRotaUseCase = { execute: jest.fn() };
@@ -27,6 +29,7 @@ describe('RotasController', () => {
       controllers: [RotasController],
       providers: [
         { provide: CriarRotaUseCase, useValue: criarRotaUseCase },
+        { provide: DesativarRotaUseCase, useValue: desativarRotaUseCase },
         {
           provide: ConfigurarAlertaPrecoUseCase,
           useValue: configurarAlertaPrecoUseCase,
@@ -54,6 +57,7 @@ describe('RotasController', () => {
       controllers: [RotasController],
       providers: [
         { provide: CriarRotaUseCase, useValue: criarRotaUseCase },
+        { provide: DesativarRotaUseCase, useValue: desativarRotaUseCase },
         {
           provide: ConfigurarAlertaPrecoUseCase,
           useValue: configurarAlertaPrecoUseCase,

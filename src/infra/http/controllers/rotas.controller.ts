@@ -6,12 +6,14 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Put,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
+import { DesativarRotaUseCase } from '../../../application/rotas/use-cases/desativar-rota.use-case';
 import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
@@ -33,6 +35,7 @@ import {
 export class RotasController {
   constructor(
     private readonly criarRotaUseCase: CriarRotaUseCase,
+    private readonly desativarRotaUseCase: DesativarRotaUseCase,
     private readonly configurarAlertaPrecoUseCase: ConfigurarAlertaPrecoUseCase,
     private readonly listarRotasUseCase: ListarRotasUseCase,
     private readonly listarHistoricoRotaUseCase: ListarHistoricoRotaUseCase,
@@ -51,6 +54,13 @@ export class RotasController {
   @Get()
   listar() {
     return this.listarRotasUseCase.execute();
+  }
+
+  @Patch(':id/desativar')
+  desativar(
+    @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
+  ) {
+    return this.desativarRotaUseCase.execute({ rotaId: params.id });
   }
 
   @Get(':id/historico')

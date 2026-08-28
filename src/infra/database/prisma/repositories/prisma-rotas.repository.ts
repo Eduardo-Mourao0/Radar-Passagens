@@ -45,6 +45,15 @@ export class PrismaRotasRepository implements RotasRepository {
     return this.mapearRota(rota);
   }
 
+  async desativar(id: string): Promise<Rota> {
+    const rota = await this.prisma.rota.update({
+      where: { id },
+      data: { ativa: false },
+    });
+
+    return this.mapearRota(rota);
+  }
+
   async listar(): Promise<Rota[]> {
     const rotas = await this.prisma.rota.findMany({
       orderBy: { criadoEm: 'desc' },

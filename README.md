@@ -100,13 +100,14 @@ Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e rep
 
 ## Endpoints disponíveis
 
-| Método | Rota                      | Descrição                                        |
-| ------ | ------------------------- | ------------------------------------------------ |
-| `POST` | `/rotas`                  | Cadastra uma rota para monitoramento.            |
-| `GET`  | `/rotas`                  | Lista as rotas cadastradas.                      |
-| `GET`  | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
-| `PUT`  | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
-| `POST` | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
+| Método  | Rota                      | Descrição                                        |
+| ------- | ------------------------- | ------------------------------------------------ |
+| `POST`  | `/rotas`                  | Cadastra uma rota para monitoramento.            |
+| `GET`   | `/rotas`                  | Lista as rotas cadastradas.                      |
+| `PATCH` | `/rotas/:id/desativar`    | Interrompe o monitoramento de uma rota.          |
+| `GET`   | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
+| `PUT`   | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
+| `POST`  | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
 
 ### Criar rota
 
@@ -129,6 +130,14 @@ Regras aplicadas no cadastro:
 - a volta, quando informada, não pode ser anterior à ida;
 - uma rota idêntica ativa não pode ser cadastrada novamente;
 - ao cadastrar novamente uma rota idêntica inativa, ela é reativada.
+
+### Desativar rota
+
+```http
+PATCH /rotas/:id/desativar
+```
+
+A rota deixa de ser consultada pelo job, mas o histórico e o alerta configurado são preservados. Repetir a requisição não causa erro. Para reativá-la, cadastre novamente a mesma rota.
 
 ### Respostas de erro
 

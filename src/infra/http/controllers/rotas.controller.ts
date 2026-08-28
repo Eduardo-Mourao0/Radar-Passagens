@@ -7,10 +7,12 @@ import {
   HttpStatus,
   Param,
   Post,
+  Put,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
+import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
@@ -22,11 +24,16 @@ import {
   rotaIdParamsSchema,
   type RotaIdParams,
 } from '../schemas/rotas/rota-id-params.schema';
+import {
+  configurarAlertaPrecoSchema,
+  type ConfigurarAlertaPrecoInput,
+} from '../schemas/rotas/configurar-alerta-preco.schema';
 
 @Controller('rotas')
 export class RotasController {
   constructor(
     private readonly criarRotaUseCase: CriarRotaUseCase,
+    private readonly configurarAlertaPrecoUseCase: ConfigurarAlertaPrecoUseCase,
     private readonly listarRotasUseCase: ListarRotasUseCase,
     private readonly listarHistoricoRotaUseCase: ListarHistoricoRotaUseCase,
     private readonly priceCheckJob: PriceCheckJob,
@@ -51,6 +58,18 @@ export class RotasController {
     @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
   ) {
     return this.listarHistoricoRotaUseCase.execute(params.id);
+  }
+
+  @Put(':id/alerta-preco')
+  configurarAlertaPreco(
+    @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
+    @Body(new ZodValidationPipe(configurarAlertaPrecoSchema))
+    input: ConfigurarAlertaPrecoInput,
+  ) {
+    return this.configurarAlertaPrecoUseCase.execute({
+      rotaId: params.id,
+      ...input,
+    });
   }
 
   @Post('verificar-precos')

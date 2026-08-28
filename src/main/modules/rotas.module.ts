@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { PriceCheckJob } from '../../application/rotas/jobs/price-check.job';
 import { CONSULTAR_PRECOS_VOO } from '../../application/rotas/ports/consultar-precos-voo.port';
+import { NOTIFICADOR_ALERTA_PRECO } from '../../application/rotas/ports/notificador-alerta-preco.port';
 import { CriarRotaUseCase } from '../../application/rotas/use-cases/criar-rota.use-case';
+import { AvaliarAlertaPrecoUseCase } from '../../application/rotas/use-cases/avaliar-alerta-preco.use-case';
+import { ConfigurarAlertaPrecoUseCase } from '../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../application/rotas/use-cases/listar-rotas.use-case';
 import { RegistrarHistoricoPrecoUseCase } from '../../application/rotas/use-cases/registrar-historico-preco.use-case';
@@ -10,12 +13,15 @@ import { PrismaRotasRepository } from '../../infra/database/prisma/repositories/
 import { IgnavModule } from '../../infra/ignav/ignav.module';
 import { IgnavService } from '../../infra/ignav/ignav.service';
 import { RotasController } from '../../infra/http/controllers/rotas.controller';
+import { LogNotificadorAlertaPrecoService } from '../../infra/notificacoes/log-notificador-alerta-preco.service';
 
 @Module({
   imports: [IgnavModule],
   controllers: [RotasController],
   providers: [
     CriarRotaUseCase,
+    ConfigurarAlertaPrecoUseCase,
+    AvaliarAlertaPrecoUseCase,
     ListarRotasUseCase,
     ListarHistoricoRotaUseCase,
     RegistrarHistoricoPrecoUseCase,
@@ -27,6 +33,11 @@ import { RotasController } from '../../infra/http/controllers/rotas.controller';
     {
       provide: CONSULTAR_PRECOS_VOO,
       useExisting: IgnavService,
+    },
+    LogNotificadorAlertaPrecoService,
+    {
+      provide: NOTIFICADOR_ALERTA_PRECO,
+      useExisting: LogNotificadorAlertaPrecoService,
     },
     PriceCheckJob,
   ],

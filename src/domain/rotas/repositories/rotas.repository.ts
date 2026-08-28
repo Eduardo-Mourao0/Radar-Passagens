@@ -1,5 +1,7 @@
 import {
+  AlertaPreco,
   HistoricoPreco,
+  NovoAlertaPreco,
   NovaRota,
   NovoHistoricoPreco,
   Rota,
@@ -15,6 +17,9 @@ export interface RotasRepository {
   listarAtivas(): Promise<Rota[]>;
   buscarPorId(id: string): Promise<Rota | null>;
   listarHistorico(rotaId: string): Promise<HistoricoPreco[]>;
+  buscarAlertaPreco(rotaId: string): Promise<AlertaPreco | null>;
+  salvarAlertaPreco(dados: NovoAlertaPreco): Promise<AlertaPreco>;
+  atualizarAlertaDisparado(id: string, disparado: boolean): Promise<void>;
   registrarHistoricoSeDiferente(
     dados: NovoHistoricoPreco,
   ): Promise<HistoricoPreco | null>;

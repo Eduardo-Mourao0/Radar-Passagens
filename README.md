@@ -89,6 +89,7 @@ Nunca envie o arquivo `.env` para o repositório.
 | `POST` | `/rotas`                  | Cadastra uma rota para monitoramento.            |
 | `GET`  | `/rotas`                  | Lista as rotas cadastradas.                      |
 | `GET`  | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
+| `PUT`  | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
 | `POST` | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
 
 ### Criar rota
@@ -129,9 +130,26 @@ POST /rotas/verificar-precos
 
 O endpoint espera a consulta e a persistência terminarem. Em produção ele é bloqueado para impedir disparos públicos de consultas pagas.
 
+### Configurar alerta de preço
+
+Defina o valor máximo que você aceita pagar pela rota:
+
+```http
+PUT /rotas/:id/alerta-preco
+Content-Type: application/json
+
+{
+  "precoAlvo": "1500.00"
+}
+```
+
+Quando uma nova coleta encontrar um preço menor ou igual ao valor definido, a aplicação dispara o alerta. Enquanto o preço permanecer nessa faixa, não há avisos repetidos. Se o preço subir acima da meta, o alerta é rearmado para uma próxima queda.
+
+Nesta primeira versão, o disparo é registrado nos logs da aplicação. A regra foi isolada do canal de entrega, permitindo acrescentar e-mail ou Telegram depois sem mudar a regra de negócio.
+
 ## Dados persistidos
 
-Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada `HistoricoPreco` pertence a uma rota e armazena preço decimal, moeda, companhia e horário da coleta.
+Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada `HistoricoPreco` pertence a uma rota e armazena preço decimal, moeda, companhia e horário da coleta. Uma rota pode ter um `AlertaPreco`, com preço-alvo e o estado do último disparo.
 
 O histórico usa o índice `(rotaId, coletadoEm DESC)` para consultas eficientes dos registros mais recentes.
 
@@ -162,7 +180,7 @@ npm run prisma:studio
 
 ## Próximos passos
 
-- Adicionar alertas para quedas de preço.
+- Adicionar um canal de entrega real para os alertas, como e-mail ou Telegram.
 
 ## Autor
 

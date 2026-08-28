@@ -91,6 +91,20 @@ export type DadosNovoHistoricoPreco = Readonly<{
 
 export type NovoHistoricoPreco = DadosNovoHistoricoPreco;
 
+export type AlertaPreco = Readonly<{
+  id: string;
+  rotaId: string;
+  precoAlvo: string;
+  disparado: boolean;
+  criadoEm: Date;
+  atualizadoEm: Date;
+}>;
+
+export type NovoAlertaPreco = Readonly<{
+  rotaId: string;
+  precoAlvo: string;
+}>;
+
 export class HistoricoPrecoEntity {
   private static readonly MOEDAS_SUPORTADAS = ['BRL', 'USD', 'EUR'] as const;
   private static readonly NOME_COMPANHIA_VALIDO = /^[\p{L}\p{N} .&'-]+$/u;
@@ -139,6 +153,49 @@ export class HistoricoPrecoEntity {
       historico.preco === outro.preco &&
       historico.moeda === outro.moeda &&
       historico.companhia === outro.companhia
+    );
+  }
+
+  static compararPrecos(primeiro: string, segundo: string): number {
+    const primeiroEmCentavos = this.paraCentavos(primeiro);
+    const segundoEmCentavos = this.paraCentavos(segundo);
+
+    if (primeiroEmCentavos === segundoEmCentavos) return 0;
+
+    return primeiroEmCentavos < segundoEmCentavos ? -1 : 1;
+  }
+
+  private static paraCentavos(preco: string): bigint {
+    const [parteInteira, parteDecimal = ''] =
+      this.normalizarPreco(preco).split('.');
+
+    return BigInt(`${parteInteira}${parteDecimal}`);
+  }
+}
+
+export class AlertaPrecoEntity {
+  static criar(dados: NovoAlertaPreco): NovoAlertaPreco {
+    const precoAlvo = HistoricoPrecoEntity.criar({
+      rotaId: dados.rotaId,
+      preco: dados.precoAlvo,
+      moeda: 'BRL',
+      companhia: 'Validador',
+    }).preco;
+
+    return { ...dados, precoAlvo };
+  }
+
+  static deveDisparar(alerta: AlertaPreco, precoAtual: string): boolean {
+    return (
+      !alerta.disparado &&
+      HistoricoPrecoEntity.compararPrecos(precoAtual, alerta.precoAlvo) <= 0
+    );
+  }
+
+  static deveRearmar(alerta: AlertaPreco, precoAtual: string): boolean {
+    return (
+      alerta.disparado &&
+      HistoricoPrecoEntity.compararPrecos(precoAtual, alerta.precoAlvo) > 0
     );
   }
 }

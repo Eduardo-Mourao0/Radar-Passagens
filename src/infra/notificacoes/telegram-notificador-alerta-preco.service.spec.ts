@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { TelegramNotificadorAlertaPrecoService } from './telegram-notificador-alerta-preco.service';
@@ -33,7 +33,7 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
       configService,
     );
 
-    await expect(service.enviar(notificacao)).resolves.toBeUndefined();
+    await expect(service.enviar(notificacao)).resolves.toBe(true);
     const [url, corpo] = post.mock.calls[0] as unknown as [
       string,
       { chat_id: string; text: string },
@@ -57,9 +57,7 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
     );
     const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
-    await expect(service.enviar(notificacao)).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(service.enviar(notificacao)).resolves.toBe(false);
     expect(JSON.stringify(errorLog.mock.calls)).not.toContain('token-secreto');
     errorLog.mockRestore();
   });
@@ -82,9 +80,7 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
     );
     const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
-    await expect(service.enviar(notificacao)).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(service.enviar(notificacao)).resolves.toBe(false);
     expect(errorLog).toHaveBeenCalledWith(
       JSON.stringify({
         evento: 'telegram_notificacao_falhou',
@@ -109,8 +105,10 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
       httpService,
       configuracaoInvalida,
     );
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
-    await expect(service.enviar(notificacao)).rejects.toThrow();
+    await expect(service.enviar(notificacao)).resolves.toBe(false);
     expect(post).not.toHaveBeenCalled();
+    errorLog.mockRestore();
   });
 });

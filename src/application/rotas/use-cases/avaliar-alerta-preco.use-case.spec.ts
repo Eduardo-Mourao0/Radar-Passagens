@@ -54,6 +54,7 @@ describe('AvaliarAlertaPrecoUseCase', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    notificador.enviar.mockResolvedValue(true);
     const modulo = await Test.createTestingModule({
       providers: [
         AvaliarAlertaPrecoUseCase,
@@ -98,6 +99,15 @@ describe('AvaliarAlertaPrecoUseCase', () => {
     await useCase.execute(rota, historico);
 
     expect(notificador.enviar).not.toHaveBeenCalled();
+    expect(repositorio.atualizarAlertaDisparado).not.toHaveBeenCalled();
+  });
+
+  it('mantém o alerta pendente quando a notificação falha', async () => {
+    repositorio.buscarAlertaPreco.mockResolvedValue(alerta);
+    notificador.enviar.mockResolvedValue(false);
+
+    await useCase.execute(rota, historico);
+
     expect(repositorio.atualizarAlertaDisparado).not.toHaveBeenCalled();
   });
 

@@ -13,5 +13,5 @@ export type NotificacaoAlertaPreco = Readonly<{
 }>;
 
 export interface NotificadorAlertaPreco {
-  enviar(notificacao: NotificacaoAlertaPreco): Promise<void>;
+  enviar(notificacao: NotificacaoAlertaPreco): Promise<boolean>;
 }

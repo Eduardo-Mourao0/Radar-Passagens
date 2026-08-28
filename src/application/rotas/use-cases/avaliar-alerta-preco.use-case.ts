@@ -21,6 +21,7 @@ export class AvaliarAlertaPrecoUseCase {
     const alerta = await this.rotasRepository.buscarAlertaPreco(rota.id);
     if (!alerta) return;
 
+    // Rearme e disparo são mutuamente exclusivos pelo estado `disparado`.
     if (AlertaPrecoEntity.deveRearmar(alerta, historico.preco)) {
       await this.rotasRepository.atualizarAlertaDisparado(alerta.id, false);
       return;
@@ -28,7 +29,13 @@ export class AvaliarAlertaPrecoUseCase {
 
     if (!AlertaPrecoEntity.deveDisparar(alerta, historico.preco)) return;
 
-    await this.notificador.enviar({ alerta, rota, historico });
+    const notificacaoEnviada = await this.notificador.enviar({
+      alerta,
+      rota,
+      historico,
+    });
+    if (!notificacaoEnviada) return;
+
     await this.rotasRepository.atualizarAlertaDisparado(alerta.id, true);
   }
 }

@@ -15,8 +15,6 @@ export const MENSAGENS_ERRO = {
     'companhia deve ter no máximo 100 caracteres e conter apenas letras, números, espaços, hífens, apóstrofos, pontos ou &.',
   ignavConsultaIndisponivel:
     'Não foi possível consultar os preços na Ignav. Tente novamente mais tarde.',
-  telegramNotificacaoIndisponivel:
-    'Não foi possível enviar a notificação pelo Telegram. Tente novamente mais tarde.',
 } as const;
 
 export const MENSAGENS_ERRO_PUBLICAS = new Set<string>([

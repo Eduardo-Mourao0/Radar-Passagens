@@ -1,17 +1,12 @@
 import { HttpService } from '@nestjs/axios';
-import {
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { z } from 'zod';
 import {
   NotificacaoAlertaPreco,
   NotificadorAlertaPreco,
 } from '../../application/rotas/ports/notificador-alerta-preco.port';
-import { MENSAGENS_ERRO } from '../../domain/errors/mensagens-erro';
 
 const respostaTelegramSchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(true) }),
@@ -21,9 +16,10 @@ const respostaTelegramSchema = z.discriminatedUnion('ok', [
     description: z.string().optional(),
   }),
 ]);
-const chatIdSchema = z.string().regex(/^-?\d+$/);
+const chatIdSchema = z.string().regex(/^-?\d{1,19}$/);
 
-type TipoFalhaTelegram = 'rede' | 'resposta_invalida' | 'resposta_rejeitada';
+type TipoFalhaTelegram =
+  'configuracao_invalida' | 'rede' | 'resposta_invalida' | 'resposta_rejeitada';
 
 class RespostaTelegramInvalidaError extends Error {
   constructor(
@@ -34,6 +30,8 @@ class RespostaTelegramInvalidaError extends Error {
   }
 }
 
+class ConfiguracaoTelegramInvalidaError extends Error {}
+
 /** Adaptador da API oficial do Telegram para alertas de preço. */
 @Injectable()
 export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaPreco {
@@ -41,6 +39,7 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
     style: 'currency',
     currency: 'BRL',
   });
+  private static readonly TIMEOUT_ENVIO_MS = 10_000;
 
   private readonly logger = new Logger(
     TelegramNotificadorAlertaPrecoService.name,
@@ -51,19 +50,19 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
     private readonly configService: ConfigService,
   ) {}
 
-  async enviar(notificacao: NotificacaoAlertaPreco): Promise<void> {
-    const token = this.configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
-    const chatId = chatIdSchema.parse(
-      this.configService.getOrThrow<string>('TELEGRAM_CHAT_ID'),
-    );
-    const urlEnvio = `https://api.telegram.org/bot${token}/sendMessage`;
-
+  async enviar(notificacao: NotificacaoAlertaPreco): Promise<boolean> {
     try {
+      const { token, chatId } = this.obterConfiguracao();
+      const urlEnvio = `https://api.telegram.org/bot${token}/sendMessage`;
       const resposta = await firstValueFrom(
-        this.httpService.post<unknown>(urlEnvio, {
-          chat_id: chatId,
-          text: this.montarMensagem(notificacao),
-        }),
+        this.httpService
+          .post<unknown>(urlEnvio, {
+            chat_id: chatId,
+            text: this.montarMensagem(notificacao),
+          })
+          .pipe(
+            timeout(TelegramNotificadorAlertaPrecoService.TIMEOUT_ENVIO_MS),
+          ),
       );
       const resultado = respostaTelegramSchema.safeParse(resposta?.data);
 
@@ -77,6 +76,8 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
           resultado.data.error_code,
         );
       }
+
+      return true;
     } catch (erro: unknown) {
       const falha = this.identificarFalha(erro);
 
@@ -88,9 +89,7 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
           ...(falha.codigo ? { codigo: falha.codigo } : {}),
         }),
       );
-      throw new ServiceUnavailableException(
-        MENSAGENS_ERRO.telegramNotificacaoIndisponivel,
-      );
+      return false;
     }
   }
 
@@ -121,6 +120,23 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
       return { tipo: erro.tipo, codigo: erro.codigo };
     }
 
+    if (erro instanceof ConfiguracaoTelegramInvalidaError) {
+      return { tipo: 'configuracao_invalida' };
+    }
+
     return { tipo: 'rede' };
+  }
+
+  private obterConfiguracao(): { token: string; chatId: string } {
+    try {
+      return {
+        token: this.configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN'),
+        chatId: chatIdSchema.parse(
+          this.configService.getOrThrow<string>('TELEGRAM_CHAT_ID'),
+        ),
+      };
+    } catch {
+      throw new ConfiguracaoTelegramInvalidaError();
+    }
   }
 }

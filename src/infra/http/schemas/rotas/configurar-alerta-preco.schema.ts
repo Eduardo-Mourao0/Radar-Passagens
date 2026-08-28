@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+// Decimal positivo com até 8 dígitos inteiros e até 2 casas decimais.
 export const configurarAlertaPrecoSchema = z.object({
   precoAlvo: z
     .string()

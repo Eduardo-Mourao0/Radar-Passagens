@@ -63,4 +63,37 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
     expect(JSON.stringify(errorLog.mock.calls)).not.toContain('token-secreto');
     errorLog.mockRestore();
   });
+
+  it('registra o código quando o Telegram rejeita a mensagem', async () => {
+    const httpService = {
+      post: jest.fn().mockReturnValue(
+        of({
+          data: {
+            ok: false,
+            error_code: 403,
+            description: 'Forbidden: bot was blocked by the user',
+          },
+        }),
+      ),
+    } as unknown as HttpService;
+    const service = new TelegramNotificadorAlertaPrecoService(
+      httpService,
+      configService,
+    );
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+    await expect(service.enviar(notificacao)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(errorLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'telegram_notificacao_falhou',
+        rotaId: 'rota-1',
+        tipo: 'resposta_rejeitada',
+        codigo: 403,
+      }),
+    );
+    expect(JSON.stringify(errorLog.mock.calls)).not.toContain('Forbidden');
+    errorLog.mockRestore();
+  });
 });

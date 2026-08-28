@@ -159,7 +159,7 @@ Content-Type: application/json
 }
 ```
 
-Quando uma nova coleta encontrar um preço menor ou igual ao valor definido, a aplicação dispara o alerta. Enquanto o preço permanecer nessa faixa, não há avisos repetidos. Se o preço subir acima da meta, o alerta é rearmado para uma próxima queda.
+Quando uma nova coleta encontrar um preço menor ou igual ao valor definido, a aplicação dispara o alerta. Enquanto o preço permanecer nessa faixa, não há avisos repetidos. Se o preço subir acima da meta, o alerta é rearmado para uma próxima queda. Atualizar a meta também o rearma, para que uma próxima coleta elegível possa gerar um novo aviso.
 
 O alerta é entregue pelo Telegram. A regra foi isolada do canal de entrega, permitindo acrescentar e-mail ou outro canal depois sem mudar a regra de negócio.
 

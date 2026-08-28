@@ -105,6 +105,7 @@ Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e rep
 | `POST`  | `/rotas`                  | Cadastra uma rota para monitoramento.            |
 | `GET`   | `/rotas`                  | Lista as rotas cadastradas.                      |
 | `PATCH` | `/rotas/:id/desativar`    | Interrompe o monitoramento de uma rota.          |
+| `PATCH` | `/rotas/:id/reativar`     | Retoma o monitoramento de uma rota.              |
 | `GET`   | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
 | `PUT`   | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
 | `POST`  | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
@@ -137,7 +138,15 @@ Regras aplicadas no cadastro:
 PATCH /rotas/:id/desativar
 ```
 
-A rota deixa de ser consultada pelo job, mas o histórico e o alerta configurado são preservados. Repetir a requisição não causa erro. Para reativá-la, cadastre novamente a mesma rota.
+A rota deixa de ser consultada pelo job, mas o histórico e o alerta configurado são preservados. Repetir a requisição não causa erro.
+
+### Reativar rota
+
+```http
+PATCH /rotas/:id/reativar
+```
+
+A rota volta a participar das coletas periódicas. Repetir a requisição não causa erro.
 
 ### Respostas de erro
 

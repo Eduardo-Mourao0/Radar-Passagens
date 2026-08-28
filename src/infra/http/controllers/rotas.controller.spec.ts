@@ -7,11 +7,13 @@ import { DesativarRotaUseCase } from '../../../application/rotas/use-cases/desat
 import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
+import { ReativarRotaUseCase } from '../../../application/rotas/use-cases/reativar-rota.use-case';
 import { RotasController } from './rotas.controller';
 
 describe('RotasController', () => {
   const criarRotaUseCase = { execute: jest.fn() };
   const desativarRotaUseCase = { execute: jest.fn() };
+  const reativarRotaUseCase = { execute: jest.fn() };
   const configurarAlertaPrecoUseCase = { execute: jest.fn() };
   const listarRotasUseCase = { execute: jest.fn() };
   const listarHistoricoRotaUseCase = { execute: jest.fn() };
@@ -30,6 +32,7 @@ describe('RotasController', () => {
       providers: [
         { provide: CriarRotaUseCase, useValue: criarRotaUseCase },
         { provide: DesativarRotaUseCase, useValue: desativarRotaUseCase },
+        { provide: ReativarRotaUseCase, useValue: reativarRotaUseCase },
         {
           provide: ConfigurarAlertaPrecoUseCase,
           useValue: configurarAlertaPrecoUseCase,
@@ -58,6 +61,7 @@ describe('RotasController', () => {
       providers: [
         { provide: CriarRotaUseCase, useValue: criarRotaUseCase },
         { provide: DesativarRotaUseCase, useValue: desativarRotaUseCase },
+        { provide: ReativarRotaUseCase, useValue: reativarRotaUseCase },
         {
           provide: ConfigurarAlertaPrecoUseCase,
           useValue: configurarAlertaPrecoUseCase,

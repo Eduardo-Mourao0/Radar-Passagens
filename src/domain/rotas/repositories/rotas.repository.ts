@@ -13,8 +13,10 @@ export interface RotasRepository {
   buscarPorChave(chaveMonitoramento: string): Promise<Rota | null>;
   criar(dados: NovaRota): Promise<Rota>;
   reativar(id: string): Promise<Rota>;
+  desativar(id: string): Promise<Rota>;
   listar(): Promise<Rota[]>;
   listarAtivas(): Promise<Rota[]>;
+  desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number>;
   buscarPorId(id: string): Promise<Rota | null>;
   listarHistorico(rotaId: string): Promise<HistoricoPreco[]>;
   buscarAlertaPreco(rotaId: string): Promise<AlertaPreco | null>;

@@ -15,6 +15,7 @@ describe('ConfigurarAlertaPrecoUseCase', () => {
     reativar: jest.fn(),
     listar: jest.fn(),
     listarAtivas: jest.fn(),
+    desativarRotasComDataIdaPassada: jest.fn(),
     buscarPorId: jest.fn(),
     listarHistorico: jest.fn(),
     registrarHistoricoSeDiferente: jest.fn(),

@@ -37,10 +37,7 @@ export class RotaEntity {
     const dataVolta = dados.dataVolta
       ? this.criarData(dados.dataVolta, 'dataVolta')
       : null;
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-
-    if (dataIda < hoje) {
+    if (this.dataIdaJaPassou(dataIda)) {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.dataIdaPassada);
     }
 
@@ -60,6 +57,16 @@ export class RotaEntity {
       dataIda,
       dataVolta,
     };
+  }
+
+  static dataIdaJaPassou(dataIda: Date, referencia = new Date()): boolean {
+    const inicioDaDataIda = new Date(dataIda);
+    inicioDaDataIda.setHours(0, 0, 0, 0);
+
+    const inicioDoDia = new Date(referencia);
+    inicioDoDia.setHours(0, 0, 0, 0);
+
+    return inicioDaDataIda < inicioDoDia;
   }
 
   private static criarData(valor: string, campo: string): Date {

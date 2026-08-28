@@ -45,6 +45,15 @@ export class PrismaRotasRepository implements RotasRepository {
     return this.mapearRota(rota);
   }
 
+  async desativar(id: string): Promise<Rota> {
+    const rota = await this.prisma.rota.update({
+      where: { id },
+      data: { ativa: false },
+    });
+
+    return this.mapearRota(rota);
+  }
+
   async listar(): Promise<Rota[]> {
     const rotas = await this.prisma.rota.findMany({
       orderBy: { criadoEm: 'desc' },
@@ -60,6 +69,18 @@ export class PrismaRotasRepository implements RotasRepository {
     });
 
     return rotas.map((rota) => this.mapearRota(rota));
+  }
+
+  async desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number> {
+    const resultado = await this.prisma.rota.updateMany({
+      where: {
+        ativa: true,
+        dataIda: { lt: dataReferencia },
+      },
+      data: { ativa: false },
+    });
+
+    return resultado.count;
   }
 
   async buscarPorId(id: string): Promise<Rota | null> {

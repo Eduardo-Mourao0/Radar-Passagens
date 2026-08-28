@@ -21,6 +21,7 @@ const respostaTelegramSchema = z.discriminatedUnion('ok', [
     description: z.string().optional(),
   }),
 ]);
+const chatIdSchema = z.string().regex(/^-?\d+$/);
 
 type TipoFalhaTelegram = 'rede' | 'resposta_invalida' | 'resposta_rejeitada';
 
@@ -36,6 +37,11 @@ class RespostaTelegramInvalidaError extends Error {
 /** Adaptador da API oficial do Telegram para alertas de preço. */
 @Injectable()
 export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaPreco {
+  private static readonly FORMATADOR_PRECO = new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+
   private readonly logger = new Logger(
     TelegramNotificadorAlertaPrecoService.name,
   );
@@ -47,7 +53,9 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
 
   async enviar(notificacao: NotificacaoAlertaPreco): Promise<void> {
     const token = this.configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
-    const chatId = this.configService.getOrThrow<string>('TELEGRAM_CHAT_ID');
+    const chatId = chatIdSchema.parse(
+      this.configService.getOrThrow<string>('TELEGRAM_CHAT_ID'),
+    );
     const urlEnvio = `https://api.telegram.org/bot${token}/sendMessage`;
 
     try {
@@ -57,7 +65,7 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
           text: this.montarMensagem(notificacao),
         }),
       );
-      const resultado = respostaTelegramSchema.safeParse(resposta.data);
+      const resultado = respostaTelegramSchema.safeParse(resposta?.data);
 
       if (!resultado.success) {
         throw new RespostaTelegramInvalidaError('resposta_invalida');
@@ -100,10 +108,9 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
   }
 
   private formatarPreco(preco: string): string {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(Number(preco));
+    return TelegramNotificadorAlertaPrecoService.FORMATADOR_PRECO.format(
+      Number(preco),
+    );
   }
 
   private identificarFalha(erro: unknown): {

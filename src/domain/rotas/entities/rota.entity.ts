@@ -105,20 +105,46 @@ export type NovoAlertaPreco = Readonly<{
   precoAlvo: string;
 }>;
 
+export class PrecoEntity {
+  private static readonly PRECO_VALIDO =
+    /^(?:[1-9]\d{0,7}(?:\.\d{1,2})?|0\.(?:0[1-9]|[1-9]\d?))$/;
+
+  static criar(preco: string): string {
+    // Preço zero representa cotação ausente ou inválida, não uma tarifa monitorável.
+    if (!this.PRECO_VALIDO.test(preco)) {
+      throw new RegraDeNegocioError(MENSAGENS_ERRO.precoInvalido);
+    }
+
+    return this.normalizar(preco);
+  }
+
+  static normalizar(preco: string): string {
+    const [parteInteira, parteDecimal = ''] = preco.split('.');
+
+    return `${parteInteira}.${parteDecimal.padEnd(2, '0')}`;
+  }
+
+  static comparar(primeiro: string, segundo: string): number {
+    const primeiroEmCentavos = this.paraCentavos(primeiro);
+    const segundoEmCentavos = this.paraCentavos(segundo);
+
+    if (primeiroEmCentavos === segundoEmCentavos) return 0;
+
+    return primeiroEmCentavos < segundoEmCentavos ? -1 : 1;
+  }
+
+  private static paraCentavos(preco: string): bigint {
+    const [parteInteira, parteDecimal = ''] = this.normalizar(preco).split('.');
+
+    return BigInt(`${parteInteira}${parteDecimal}`);
+  }
+}
+
 export class HistoricoPrecoEntity {
   private static readonly MOEDAS_SUPORTADAS = ['BRL', 'USD', 'EUR'] as const;
   private static readonly NOME_COMPANHIA_VALIDO = /^[\p{L}\p{N} .&'-]+$/u;
 
   static criar(dados: DadosNovoHistoricoPreco): NovoHistoricoPreco {
-    // Preço zero representa cotação ausente ou inválida, não uma tarifa monitorável.
-    if (
-      !/^(?:[1-9]\d{0,7}(?:\.\d{1,2})?|0\.(?:0[1-9]|[1-9]\d?))$/.test(
-        dados.preco,
-      )
-    ) {
-      throw new RegraDeNegocioError(MENSAGENS_ERRO.precoInvalido);
-    }
-
     if (
       !this.MOEDAS_SUPORTADAS.includes(
         dados.moeda as (typeof this.MOEDAS_SUPORTADAS)[number],
@@ -136,13 +162,11 @@ export class HistoricoPrecoEntity {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.companhiaInvalida);
     }
 
-    return { ...dados, preco: this.normalizarPreco(dados.preco), companhia };
+    return { ...dados, preco: PrecoEntity.criar(dados.preco), companhia };
   }
 
   static normalizarPreco(preco: string): string {
-    const [parteInteira, parteDecimal = ''] = preco.split('.');
-
-    return `${parteInteira}.${parteDecimal.padEnd(2, '0')}`;
+    return PrecoEntity.normalizar(preco);
   }
 
   static temMesmoValor(
@@ -157,30 +181,13 @@ export class HistoricoPrecoEntity {
   }
 
   static compararPrecos(primeiro: string, segundo: string): number {
-    const primeiroEmCentavos = this.paraCentavos(primeiro);
-    const segundoEmCentavos = this.paraCentavos(segundo);
-
-    if (primeiroEmCentavos === segundoEmCentavos) return 0;
-
-    return primeiroEmCentavos < segundoEmCentavos ? -1 : 1;
-  }
-
-  private static paraCentavos(preco: string): bigint {
-    const [parteInteira, parteDecimal = ''] =
-      this.normalizarPreco(preco).split('.');
-
-    return BigInt(`${parteInteira}${parteDecimal}`);
+    return PrecoEntity.comparar(primeiro, segundo);
   }
 }
 
 export class AlertaPrecoEntity {
   static criar(dados: NovoAlertaPreco): NovoAlertaPreco {
-    const precoAlvo = HistoricoPrecoEntity.criar({
-      rotaId: dados.rotaId,
-      preco: dados.precoAlvo,
-      moeda: 'BRL',
-      companhia: 'Validador',
-    }).preco;
+    const precoAlvo = PrecoEntity.criar(dados.precoAlvo);
 
     return { ...dados, precoAlvo };
   }
@@ -188,14 +195,13 @@ export class AlertaPrecoEntity {
   static deveDisparar(alerta: AlertaPreco, precoAtual: string): boolean {
     return (
       !alerta.disparado &&
-      HistoricoPrecoEntity.compararPrecos(precoAtual, alerta.precoAlvo) <= 0
+      PrecoEntity.comparar(precoAtual, alerta.precoAlvo) <= 0
     );
   }
 
   static deveRearmar(alerta: AlertaPreco, precoAtual: string): boolean {
     return (
-      alerta.disparado &&
-      HistoricoPrecoEntity.compararPrecos(precoAtual, alerta.precoAlvo) > 0
+      alerta.disparado && PrecoEntity.comparar(precoAtual, alerta.precoAlvo) > 0
     );
   }
 }

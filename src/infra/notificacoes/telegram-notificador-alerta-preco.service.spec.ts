@@ -96,4 +96,21 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
     expect(JSON.stringify(errorLog.mock.calls)).not.toContain('Forbidden');
     errorLog.mockRestore();
   });
+
+  it('rejeita chat_id fora do formato aceito pelo Telegram', async () => {
+    const post = jest.fn();
+    const httpService = { post } as unknown as HttpService;
+    const configuracaoInvalida = {
+      getOrThrow: jest.fn((chave: string) =>
+        chave === 'TELEGRAM_CHAT_ID' ? 'chat-invalido' : 'token-secreto',
+      ),
+    } as unknown as ConfigService;
+    const service = new TelegramNotificadorAlertaPrecoService(
+      httpService,
+      configuracaoInvalida,
+    );
+
+    await expect(service.enviar(notificacao)).rejects.toThrow();
+    expect(post).not.toHaveBeenCalled();
+  });
 });

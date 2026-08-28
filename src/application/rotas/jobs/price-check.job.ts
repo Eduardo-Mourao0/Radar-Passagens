@@ -24,6 +24,20 @@ export class PriceCheckJob {
 
   @Cron(CronExpression.EVERY_6_HOURS)
   async executar(): Promise<void> {
+    const inicioDeHoje = new Date();
+    inicioDeHoje.setHours(0, 0, 0, 0);
+
+    const rotasDesativadas =
+      await this.rotasRepository.desativarRotasComDataIdaPassada(inicioDeHoje);
+    if (rotasDesativadas > 0) {
+      this.logger.log(
+        JSON.stringify({
+          evento: 'rotas_com_data_ida_passada_desativadas',
+          quantidade: rotasDesativadas,
+        }),
+      );
+    }
+
     const rotasPendentes = [...(await this.rotasRepository.listarAtivas())];
     const quantidadeDeTrabalhadores = Math.min(
       PriceCheckJob.CONCORRENCIA_MAXIMA,

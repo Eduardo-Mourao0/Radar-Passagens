@@ -15,6 +15,7 @@ const rota = {
 describe('PriceCheckJob', () => {
   it('continua a verificação após a falha de uma rota', async () => {
     const rotasRepository = {
+      desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
       listarAtivas: jest
         .fn()
         .mockResolvedValue([rota, { ...rota, id: 'rota-2' }]),
@@ -61,6 +62,7 @@ describe('PriceCheckJob', () => {
       id: `rota-${indice}`,
     }));
     const rotasRepository = {
+      desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
       listarAtivas: jest.fn().mockResolvedValue(rotas),
     };
     let verificacoesEmAndamento = 0;
@@ -98,6 +100,7 @@ describe('PriceCheckJob', () => {
 
   it('registra ausência de oferta no nível info', async () => {
     const rotasRepository = {
+      desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
       listarAtivas: jest.fn().mockResolvedValue([rota]),
     };
     const consultarPrecosVoo = {
@@ -124,5 +127,42 @@ describe('PriceCheckJob', () => {
     expect(registrarHistoricoPreco.execute).not.toHaveBeenCalled();
     infoLog.mockRestore();
     warnLog.mockRestore();
+  });
+
+  it('desativa rotas cuja data de ida já passou antes de consultar preços', async () => {
+    const rotasRepository = {
+      desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(2),
+      listarAtivas: jest.fn().mockResolvedValue([]),
+    };
+    const consultarPrecosVoo = { consultarMenorPreco: jest.fn() };
+    const registrarHistoricoPreco = { execute: jest.fn() };
+    const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const job = new PriceCheckJob(
+      rotasRepository,
+      consultarPrecosVoo,
+      registrarHistoricoPreco,
+    );
+
+    await job.executar();
+
+    expect(
+      rotasRepository.desativarRotasComDataIdaPassada,
+    ).toHaveBeenCalledWith(expect.any(Date));
+    const [inicioDeHoje] =
+      rotasRepository.desativarRotasComDataIdaPassada.mock.calls[0];
+    expect(inicioDeHoje).toEqual(
+      new Date(
+        inicioDeHoje.getFullYear(),
+        inicioDeHoje.getMonth(),
+        inicioDeHoje.getDate(),
+      ),
+    );
+    expect(infoLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'rotas_com_data_ida_passada_desativadas',
+        quantidade: 2,
+      }),
+    );
+    infoLog.mockRestore();
   });
 });

@@ -7,6 +7,8 @@ export const MENSAGENS_ERRO = {
   dadosEntradaInvalidos: 'Dados de entrada inválidos.',
   rotaDuplicada: 'Esta rota já está cadastrada.',
   rotaNaoEncontrada: 'Rota não encontrada.',
+  rotaComDataIdaPassada:
+    'Não é possível reativar uma rota cuja data de ida já passou.',
   precoInvalido:
     'preco deve ser um valor decimal positivo de até 99.999.999,99.',
   moedaInvalida: 'moeda deve ser uma das moedas suportadas: BRL, USD ou EUR.',
@@ -20,6 +22,7 @@ export const MENSAGENS_ERRO = {
 export const MENSAGENS_ERRO_PUBLICAS = new Set<string>([
   MENSAGENS_ERRO.origemDestinoIguais,
   MENSAGENS_ERRO.dataIdaPassada,
+  MENSAGENS_ERRO.rotaComDataIdaPassada,
   MENSAGENS_ERRO.dataVoltaAnterior,
   MENSAGENS_ERRO.dataInvalida('dataIda'),
   MENSAGENS_ERRO.dataInvalida('dataVolta'),

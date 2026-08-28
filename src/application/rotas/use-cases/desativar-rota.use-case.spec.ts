@@ -25,6 +25,7 @@ describe('DesativarRotaUseCase', () => {
     desativar: jest.fn(),
     listar: jest.fn(),
     listarAtivas: jest.fn(),
+    desativarRotasComDataIdaPassada: jest.fn(),
     buscarPorId: jest.fn(),
     listarHistorico: jest.fn(),
     buscarAlertaPreco: jest.fn(),

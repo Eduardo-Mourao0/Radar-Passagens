@@ -16,6 +16,7 @@ export interface RotasRepository {
   desativar(id: string): Promise<Rota>;
   listar(): Promise<Rota[]>;
   listarAtivas(): Promise<Rota[]>;
+  desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number>;
   buscarPorId(id: string): Promise<Rota | null>;
   listarHistorico(rotaId: string): Promise<HistoricoPreco[]>;
   buscarAlertaPreco(rotaId: string): Promise<AlertaPreco | null>;

@@ -146,7 +146,7 @@ A rota deixa de ser consultada pelo job, mas o histórico e o alerta configurado
 PATCH /rotas/:id/reativar
 ```
 
-A rota volta a participar das coletas periódicas. Repetir a requisição não causa erro.
+A rota volta a participar das coletas periódicas. Repetir a requisição não causa erro. Rotas cuja data de ida já passou não podem ser reativadas; o job também desativa automaticamente rotas vencidas antes de cada ciclo de coleta.
 
 ### Respostas de erro
 

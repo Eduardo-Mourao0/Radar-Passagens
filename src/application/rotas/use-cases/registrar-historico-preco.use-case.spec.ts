@@ -15,6 +15,7 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       reativar: jest.fn(),
       listar: jest.fn(),
       listarAtivas: jest.fn(),
+      desativarRotasComDataIdaPassada: jest.fn(),
       buscarPorId: jest.fn().mockResolvedValue({ id: 'rota-1', ativa: true }),
       listarHistorico: jest.fn(),
       buscarAlertaPreco: jest.fn(),

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { RegraDeNegocioError } from '../../../domain/errors/regra-de-negocio.error';
 import {
   ROTAS_REPOSITORY,
   RotasRepository,
@@ -25,6 +26,7 @@ describe('ReativarRotaUseCase', () => {
     desativar: jest.fn(),
     listar: jest.fn(),
     listarAtivas: jest.fn(),
+    desativarRotasComDataIdaPassada: jest.fn(),
     buscarPorId: jest.fn(),
     listarHistorico: jest.fn(),
     buscarAlertaPreco: jest.fn(),
@@ -62,6 +64,18 @@ describe('ReativarRotaUseCase', () => {
     await expect(useCase.execute({ rotaId: rota.id })).resolves.toMatchObject({
       ativa: true,
     });
+    expect(repositorio.reativar).not.toHaveBeenCalled();
+  });
+
+  it('não reativa uma rota cuja ida já passou', async () => {
+    repositorio.buscarPorId.mockResolvedValue({
+      ...rota,
+      dataIda: new Date('2020-01-01'),
+    });
+
+    await expect(useCase.execute({ rotaId: rota.id })).rejects.toBeInstanceOf(
+      RegraDeNegocioError,
+    );
     expect(repositorio.reativar).not.toHaveBeenCalled();
   });
 

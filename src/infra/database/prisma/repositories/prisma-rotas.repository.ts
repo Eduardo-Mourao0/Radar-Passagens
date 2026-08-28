@@ -71,6 +71,18 @@ export class PrismaRotasRepository implements RotasRepository {
     return rotas.map((rota) => this.mapearRota(rota));
   }
 
+  async desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number> {
+    const resultado = await this.prisma.rota.updateMany({
+      where: {
+        ativa: true,
+        dataIda: { lt: dataReferencia },
+      },
+      data: { ativa: false },
+    });
+
+    return resultado.count;
+  }
+
   async buscarPorId(id: string): Promise<Rota | null> {
     const rota = await this.prisma.rota.findUnique({
       where: { id },

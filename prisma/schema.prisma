@@ -17,6 +17,7 @@ model Rota {
   ativa              Boolean          @default(true)
   criadoEm           DateTime         @default(now())
   historicos         HistoricoPreco[]
+  alertaPreco        AlertaPreco?
 
   @@index([ativa])
 }
@@ -31,4 +32,14 @@ model HistoricoPreco {
   coletadoEm DateTime @default(now())
 
   @@index([rotaId, coletadoEm(sort: Desc)])
+}
+
+model AlertaPreco {
+  id         String   @id @default(uuid())
+  rotaId     String   @unique
+  rota       Rota     @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+  precoAlvo Decimal  @db.Decimal(10, 2)
+  disparado Boolean  @default(false)
+  criadoEm  DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }

@@ -68,19 +68,35 @@ A aplicação fica disponível em `http://localhost:3000`.
 
 O arquivo `.env.example` contém valores locais prontos para o Docker.
 
-| Variável            | Descrição                                            |
-| ------------------- | ---------------------------------------------------- |
-| `PORT`              | Porta HTTP da API. Padrão: `3000`.                   |
-| `NODE_ENV`          | Ambiente da aplicação. Use `development` localmente. |
-| `POSTGRES_USER`     | Usuário do PostgreSQL no container.                  |
-| `POSTGRES_PASSWORD` | Senha do PostgreSQL no container.                    |
-| `POSTGRES_DB`       | Nome do banco de dados.                              |
-| `POSTGRES_PORT`     | Porta exposta pelo PostgreSQL.                       |
-| `DATABASE_URL`      | String de conexão usada pelo Prisma.                 |
-| `IGNAV_API_KEY`     | Chave privada da API Ignav.                          |
-| `IGNAV_BASE_URL`    | URL base da API Ignav.                               |
+| Variável             | Descrição                                            |
+| -------------------- | ---------------------------------------------------- |
+| `PORT`               | Porta HTTP da API. Padrão: `3000`.                   |
+| `NODE_ENV`           | Ambiente da aplicação. Use `development` localmente. |
+| `POSTGRES_USER`      | Usuário do PostgreSQL no container.                  |
+| `POSTGRES_PASSWORD`  | Senha do PostgreSQL no container.                    |
+| `POSTGRES_DB`        | Nome do banco de dados.                              |
+| `POSTGRES_PORT`      | Porta exposta pelo PostgreSQL.                       |
+| `DATABASE_URL`       | String de conexão usada pelo Prisma.                 |
+| `IGNAV_API_KEY`      | Chave privada da API Ignav.                          |
+| `IGNAV_BASE_URL`     | URL base da API Ignav.                               |
+| `TELEGRAM_BOT_TOKEN` | Token privado do bot criado no BotFather.            |
+| `TELEGRAM_CHAT_ID`   | Identificador do chat ou grupo que recebe alertas.   |
 
 Nunca envie o arquivo `.env` para o repositório.
+
+### Configurar o Telegram
+
+1. No Telegram, abra o perfil `@BotFather`, envie `/newbot` e copie o token fornecido.
+2. Envie qualquer mensagem para o bot criado.
+3. Acesse `https://api.telegram.org/bot<SEU_TOKEN>/getUpdates` no navegador e copie o valor de `message.chat.id` retornado.
+4. Preencha no seu `.env`:
+
+```env
+TELEGRAM_BOT_TOKEN=seu_token
+TELEGRAM_CHAT_ID=seu_chat_id
+```
+
+Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e repita o passo 3. O `chat_id` de grupos normalmente é negativo.
 
 ## Endpoints disponíveis
 
@@ -89,6 +105,7 @@ Nunca envie o arquivo `.env` para o repositório.
 | `POST` | `/rotas`                  | Cadastra uma rota para monitoramento.            |
 | `GET`  | `/rotas`                  | Lista as rotas cadastradas.                      |
 | `GET`  | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
+| `PUT`  | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
 | `POST` | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
 
 ### Criar rota
@@ -129,9 +146,26 @@ POST /rotas/verificar-precos
 
 O endpoint espera a consulta e a persistência terminarem. Em produção ele é bloqueado para impedir disparos públicos de consultas pagas.
 
+### Configurar alerta de preço
+
+Defina o valor máximo que você aceita pagar pela rota:
+
+```http
+PUT /rotas/:id/alerta-preco
+Content-Type: application/json
+
+{
+  "precoAlvo": "1500.00"
+}
+```
+
+Quando uma nova coleta encontrar um preço menor ou igual ao valor definido, a aplicação dispara o alerta. Enquanto o preço permanecer nessa faixa, não há avisos repetidos. Se o preço subir acima da meta, o alerta é rearmado para uma próxima queda. Atualizar a meta também o rearma, para que uma próxima coleta elegível possa gerar um novo aviso.
+
+O alerta é entregue pelo Telegram. A regra foi isolada do canal de entrega, permitindo acrescentar e-mail ou outro canal depois sem mudar a regra de negócio.
+
 ## Dados persistidos
 
-Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada `HistoricoPreco` pertence a uma rota e armazena preço decimal, moeda, companhia e horário da coleta.
+Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada `HistoricoPreco` pertence a uma rota e armazena preço decimal, moeda, companhia e horário da coleta. Uma rota pode ter um `AlertaPreco`, com preço-alvo e o estado do último disparo.
 
 O histórico usa o índice `(rotaId, coletadoEm DESC)` para consultas eficientes dos registros mais recentes.
 
@@ -162,7 +196,7 @@ npm run prisma:studio
 
 ## Próximos passos
 
-- Adicionar alertas para quedas de preço.
+- Adicionar um segundo canal de entrega, como e-mail.
 
 ## Autor
 

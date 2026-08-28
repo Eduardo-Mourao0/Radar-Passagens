@@ -1,13 +1,16 @@
 import {
+  AlertaPreco as PrismaAlertaPreco,
   HistoricoPreco as PrismaHistoricoPreco,
   Rota as PrismaRota,
 } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import {
+  AlertaPreco,
   HistoricoPreco,
   HistoricoPrecoEntity,
   NovaRota,
+  NovoAlertaPreco,
   NovoHistoricoPreco,
   Rota,
 } from '../../../../domain/rotas/entities/rota.entity';
@@ -76,6 +79,37 @@ export class PrismaRotasRepository implements RotasRepository {
     return historicos.map((historico) => this.mapearHistorico(historico));
   }
 
+  async buscarAlertaPreco(rotaId: string): Promise<AlertaPreco | null> {
+    const alerta = await this.prisma.alertaPreco.findUnique({
+      where: { rotaId },
+    });
+
+    return alerta ? this.mapearAlerta(alerta) : null;
+  }
+
+  async salvarAlertaPreco(dados: NovoAlertaPreco): Promise<AlertaPreco> {
+    const alerta = await this.prisma.alertaPreco.upsert({
+      where: { rotaId: dados.rotaId },
+      create: dados,
+      update: {
+        precoAlvo: dados.precoAlvo,
+        disparado: false,
+      },
+    });
+
+    return this.mapearAlerta(alerta);
+  }
+
+  async atualizarAlertaDisparado(
+    id: string,
+    disparado: boolean,
+  ): Promise<void> {
+    await this.prisma.alertaPreco.update({
+      where: { id },
+      data: { disparado },
+    });
+  }
+
   async registrarHistoricoSeDiferente(
     dados: NovoHistoricoPreco,
   ): Promise<HistoricoPreco | null> {
@@ -127,6 +161,19 @@ export class PrismaRotasRepository implements RotasRepository {
       moeda: historico.moeda,
       companhia: historico.companhia,
       coletadoEm: historico.coletadoEm,
+    };
+  }
+
+  private mapearAlerta(alerta: PrismaAlertaPreco): AlertaPreco {
+    return {
+      id: alerta.id,
+      rotaId: alerta.rotaId,
+      precoAlvo: HistoricoPrecoEntity.normalizarPreco(
+        alerta.precoAlvo.toString(),
+      ),
+      disparado: alerta.disparado,
+      criadoEm: alerta.criadoEm,
+      atualizadoEm: alerta.atualizadoEm,
     };
   }
 }

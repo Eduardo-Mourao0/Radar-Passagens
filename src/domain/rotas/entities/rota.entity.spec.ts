@@ -1,5 +1,5 @@
 import { RegraDeNegocioError } from '../../errors/regra-de-negocio.error';
-import { HistoricoPrecoEntity } from './rota.entity';
+import { HistoricoPrecoEntity, RotaEntity } from './rota.entity';
 
 describe('HistoricoPrecoEntity', () => {
   const dados = {
@@ -82,5 +82,23 @@ describe('HistoricoPrecoEntity', () => {
     expect(() => HistoricoPrecoEntity.criar({ ...dados, companhia })).toThrow(
       RegraDeNegocioError,
     );
+  });
+});
+
+describe('RotaEntity', () => {
+  describe('dataIdaJaPassou', () => {
+    const referencia = new Date(2026, 7, 27, 15, 30, 0);
+
+    it('ignora o horario da data de ida na comparacao', () => {
+      const dataIda = new Date(2026, 7, 27, 23, 59, 59);
+
+      expect(RotaEntity.dataIdaJaPassou(dataIda, referencia)).toBe(false);
+    });
+
+    it('considera passada uma data anterior ao dia de referencia', () => {
+      const dataIda = new Date(2026, 7, 26, 23, 59, 59);
+
+      expect(RotaEntity.dataIdaJaPassou(dataIda, referencia)).toBe(true);
+    });
   });
 });

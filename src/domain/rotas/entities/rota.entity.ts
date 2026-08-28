@@ -60,10 +60,13 @@ export class RotaEntity {
   }
 
   static dataIdaJaPassou(dataIda: Date, referencia = new Date()): boolean {
+    const inicioDaDataIda = new Date(dataIda);
+    inicioDaDataIda.setHours(0, 0, 0, 0);
+
     const inicioDoDia = new Date(referencia);
     inicioDoDia.setHours(0, 0, 0, 0);
 
-    return dataIda < inicioDoDia;
+    return inicioDaDataIda < inicioDoDia;
   }
 
   private static criarData(valor: string, campo: string): Date {

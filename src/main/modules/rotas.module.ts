@@ -13,10 +13,11 @@ import { PrismaRotasRepository } from '../../infra/database/prisma/repositories/
 import { IgnavModule } from '../../infra/ignav/ignav.module';
 import { IgnavService } from '../../infra/ignav/ignav.service';
 import { RotasController } from '../../infra/http/controllers/rotas.controller';
-import { LogNotificadorAlertaPrecoService } from '../../infra/notificacoes/log-notificador-alerta-preco.service';
+import { NotificacoesModule } from '../../infra/notificacoes/notificacoes.module';
+import { TelegramNotificadorAlertaPrecoService } from '../../infra/notificacoes/telegram-notificador-alerta-preco.service';
 
 @Module({
-  imports: [IgnavModule],
+  imports: [IgnavModule, NotificacoesModule],
   controllers: [RotasController],
   providers: [
     CriarRotaUseCase,
@@ -34,10 +35,9 @@ import { LogNotificadorAlertaPrecoService } from '../../infra/notificacoes/log-n
       provide: CONSULTAR_PRECOS_VOO,
       useExisting: IgnavService,
     },
-    LogNotificadorAlertaPrecoService,
     {
       provide: NOTIFICADOR_ALERTA_PRECO,
-      useExisting: LogNotificadorAlertaPrecoService,
+      useExisting: TelegramNotificadorAlertaPrecoService,
     },
     PriceCheckJob,
   ],

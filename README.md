@@ -68,19 +68,35 @@ A aplicação fica disponível em `http://localhost:3000`.
 
 O arquivo `.env.example` contém valores locais prontos para o Docker.
 
-| Variável            | Descrição                                            |
-| ------------------- | ---------------------------------------------------- |
-| `PORT`              | Porta HTTP da API. Padrão: `3000`.                   |
-| `NODE_ENV`          | Ambiente da aplicação. Use `development` localmente. |
-| `POSTGRES_USER`     | Usuário do PostgreSQL no container.                  |
-| `POSTGRES_PASSWORD` | Senha do PostgreSQL no container.                    |
-| `POSTGRES_DB`       | Nome do banco de dados.                              |
-| `POSTGRES_PORT`     | Porta exposta pelo PostgreSQL.                       |
-| `DATABASE_URL`      | String de conexão usada pelo Prisma.                 |
-| `IGNAV_API_KEY`     | Chave privada da API Ignav.                          |
-| `IGNAV_BASE_URL`    | URL base da API Ignav.                               |
+| Variável             | Descrição                                            |
+| -------------------- | ---------------------------------------------------- |
+| `PORT`               | Porta HTTP da API. Padrão: `3000`.                   |
+| `NODE_ENV`           | Ambiente da aplicação. Use `development` localmente. |
+| `POSTGRES_USER`      | Usuário do PostgreSQL no container.                  |
+| `POSTGRES_PASSWORD`  | Senha do PostgreSQL no container.                    |
+| `POSTGRES_DB`        | Nome do banco de dados.                              |
+| `POSTGRES_PORT`      | Porta exposta pelo PostgreSQL.                       |
+| `DATABASE_URL`       | String de conexão usada pelo Prisma.                 |
+| `IGNAV_API_KEY`      | Chave privada da API Ignav.                          |
+| `IGNAV_BASE_URL`     | URL base da API Ignav.                               |
+| `TELEGRAM_BOT_TOKEN` | Token privado do bot criado no BotFather.            |
+| `TELEGRAM_CHAT_ID`   | Identificador do chat ou grupo que recebe alertas.   |
 
 Nunca envie o arquivo `.env` para o repositório.
+
+### Configurar o Telegram
+
+1. No Telegram, abra o perfil `@BotFather`, envie `/newbot` e copie o token fornecido.
+2. Envie qualquer mensagem para o bot criado.
+3. Acesse `https://api.telegram.org/bot<SEU_TOKEN>/getUpdates` no navegador e copie o valor de `message.chat.id` retornado.
+4. Preencha no seu `.env`:
+
+```env
+TELEGRAM_BOT_TOKEN=seu_token
+TELEGRAM_CHAT_ID=seu_chat_id
+```
+
+Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e repita o passo 3. O `chat_id` de grupos normalmente é negativo.
 
 ## Endpoints disponíveis
 
@@ -145,7 +161,7 @@ Content-Type: application/json
 
 Quando uma nova coleta encontrar um preço menor ou igual ao valor definido, a aplicação dispara o alerta. Enquanto o preço permanecer nessa faixa, não há avisos repetidos. Se o preço subir acima da meta, o alerta é rearmado para uma próxima queda.
 
-Nesta primeira versão, o disparo é registrado nos logs da aplicação. A regra foi isolada do canal de entrega, permitindo acrescentar e-mail ou Telegram depois sem mudar a regra de negócio.
+O alerta é entregue pelo Telegram. A regra foi isolada do canal de entrega, permitindo acrescentar e-mail ou outro canal depois sem mudar a regra de negócio.
 
 ## Dados persistidos
 
@@ -180,7 +196,7 @@ npm run prisma:studio
 
 ## Próximos passos
 
-- Adicionar um canal de entrega real para os alertas, como e-mail ou Telegram.
+- Adicionar um segundo canal de entrega, como e-mail.
 
 ## Autor
 

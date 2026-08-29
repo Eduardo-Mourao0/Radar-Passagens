@@ -37,7 +37,7 @@ describe('PrismaRotasRepository', () => {
         preco: '100.00',
         moeda: 'BRL',
         companhia: 'LATAM',
-        ignavId: 'ignav-novo',
+        ignavId: ' ignav-novo ',
       }),
     ).resolves.toBeNull();
 

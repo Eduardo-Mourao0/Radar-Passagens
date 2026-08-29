@@ -153,10 +153,11 @@ export class PrismaRotasRepository implements RotasRepository {
         ultimoHistoricoMapeado &&
         HistoricoPrecoEntity.temMesmoValor(ultimoHistoricoMapeado, dados)
       ) {
-        if (dados.ignavId && dados.ignavId !== ultimoHistorico.ignavId) {
+        const ignavId = dados.ignavId?.trim();
+        if (ignavId && ignavId !== ultimoHistorico.ignavId) {
           await transacao.historicoPreco.update({
             where: { id: ultimoHistorico.id },
-            data: { ignavId: dados.ignavId },
+            data: { ignavId },
           });
         }
 

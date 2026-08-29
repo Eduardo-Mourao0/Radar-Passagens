@@ -17,6 +17,8 @@ export const MENSAGENS_ERRO = {
     'companhia deve ter no máximo 100 caracteres e conter apenas letras, números, espaços, hífens, apóstrofos, pontos ou &.',
   ignavConsultaIndisponivel:
     'Não foi possível consultar os preços na Ignav. Tente novamente mais tarde.',
+  linksCompraIndisponiveis:
+    'Nenhum link de compra est\u00e1 dispon\u00edvel para a \u00faltima cota\u00e7\u00e3o desta rota.',
 } as const;
 
 export const MENSAGENS_ERRO_PUBLICAS = new Set<string>([
@@ -30,4 +32,5 @@ export const MENSAGENS_ERRO_PUBLICAS = new Set<string>([
   MENSAGENS_ERRO.moedaInvalida,
   MENSAGENS_ERRO.companhiaObrigatoria,
   MENSAGENS_ERRO.companhiaInvalida,
+  MENSAGENS_ERRO.linksCompraIndisponiveis,
 ]);

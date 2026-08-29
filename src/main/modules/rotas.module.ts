@@ -4,6 +4,7 @@ import { CONSULTAR_PRECOS_VOO } from '../../application/rotas/ports/consultar-pr
 import { NOTIFICADOR_ALERTA_PRECO } from '../../application/rotas/ports/notificador-alerta-preco.port';
 import { CriarRotaUseCase } from '../../application/rotas/use-cases/criar-rota.use-case';
 import { DesativarRotaUseCase } from '../../application/rotas/use-cases/desativar-rota.use-case';
+import { ExcluirRotaUseCase } from '../../application/rotas/use-cases/excluir-rota.use-case';
 import { AvaliarAlertaPrecoUseCase } from '../../application/rotas/use-cases/avaliar-alerta-preco.use-case';
 import { ConfigurarAlertaPrecoUseCase } from '../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../application/rotas/use-cases/listar-historico-rota.use-case';
@@ -25,6 +26,7 @@ import { TelegramNotificadorAlertaPrecoService } from '../../infra/notificacoes/
   providers: [
     CriarRotaUseCase,
     DesativarRotaUseCase,
+    ExcluirRotaUseCase,
     ReativarRotaUseCase,
     ConfigurarAlertaPrecoUseCase,
     AvaliarAlertaPrecoUseCase,

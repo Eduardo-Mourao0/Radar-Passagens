@@ -31,6 +31,8 @@ describe('Casos de uso de rotas', () => {
       buscarPorChave: jest.fn(),
       criar: jest.fn(),
       reativar: jest.fn(),
+      desativar: jest.fn(),
+      excluir: jest.fn(),
       listar: jest.fn(),
       listarAtivas: jest.fn(),
       desativarRotasComDataIdaPassada: jest.fn(),

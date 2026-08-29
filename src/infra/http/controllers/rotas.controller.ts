@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   HttpCode,
@@ -14,6 +15,7 @@ import { ConfigService } from '@nestjs/config';
 import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
 import { DesativarRotaUseCase } from '../../../application/rotas/use-cases/desativar-rota.use-case';
+import { ExcluirRotaUseCase } from '../../../application/rotas/use-cases/excluir-rota.use-case';
 import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
@@ -38,6 +40,7 @@ export class RotasController {
   constructor(
     private readonly criarRotaUseCase: CriarRotaUseCase,
     private readonly desativarRotaUseCase: DesativarRotaUseCase,
+    private readonly excluirRotaUseCase: ExcluirRotaUseCase,
     private readonly reativarRotaUseCase: ReativarRotaUseCase,
     private readonly configurarAlertaPrecoUseCase: ConfigurarAlertaPrecoUseCase,
     private readonly listarRotasUseCase: ListarRotasUseCase,
@@ -72,6 +75,14 @@ export class RotasController {
     @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
   ) {
     return this.reativarRotaUseCase.execute({ rotaId: params.id });
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async excluir(
+    @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
+  ): Promise<void> {
+    await this.excluirRotaUseCase.execute({ rotaId: params.id });
   }
 
   @Get(':id/historico')

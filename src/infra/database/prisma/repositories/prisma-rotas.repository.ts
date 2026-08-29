@@ -55,7 +55,7 @@ export class PrismaRotasRepository implements RotasRepository {
   }
 
   async excluir(id: string): Promise<void> {
-    await this.prisma.rota.delete({ where: { id } });
+    await this.prisma.rota.deleteMany({ where: { id } });
   }
 
   async listar(): Promise<Rota[]> {

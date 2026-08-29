@@ -29,6 +29,7 @@ model HistoricoPreco {
   preco      Decimal  @db.Decimal(10, 2)
   moeda      String
   companhia  String
+  ignavId    String?
   coletadoEm DateTime @default(now())
 
   @@index([rotaId, coletadoEm(sort: Desc)])

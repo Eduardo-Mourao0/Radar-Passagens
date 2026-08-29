@@ -10,6 +10,7 @@ import { z } from 'zod';
 import {
   ConsultarPrecosVoo,
   CotacaoDeVoo,
+  LinkCompra,
 } from '../../application/rotas/ports/consultar-precos-voo.port';
 import { MENSAGENS_ERRO } from '../../domain/errors/mensagens-erro';
 import { Rota } from '../../domain/rotas/entities/rota.entity';
@@ -22,6 +23,7 @@ const respostaIgnavSchema = z.object({
         currency: z.literal('BRL'),
         status: z.enum(['verified', 'unverified']),
       }),
+      ignav_id: z.string().trim().min(1).optional(),
       outbound: z.object({
         carrier: z.string().trim().min(1).optional(),
         segments: z
@@ -33,6 +35,20 @@ const respostaIgnavSchema = z.object({
           )
           .min(1),
       }),
+    }),
+  ),
+});
+
+const respostaLinksCompraSchema = z.object({
+  booking_options: z.array(
+    z.object({
+      links: z.array(
+        z.object({
+          provider_name: z.string().trim().min(1),
+          provider_type: z.enum(['airline', 'third_party']),
+          url: z.string().trim().min(1),
+        }),
+      ),
     }),
   ),
 });
@@ -117,6 +133,7 @@ export class IgnavService implements ConsultarPrecosVoo {
       return {
         preco: menorOferta.price.amount.toFixed(2),
         moeda: menorOferta.price.currency,
+        ...(menorOferta.ignav_id ? { ignavId: menorOferta.ignav_id } : {}),
         companhia: companhiaIdentificada ?? 'Companhia não identificada',
       };
     } catch (erro: unknown) {
@@ -128,6 +145,24 @@ export class IgnavService implements ConsultarPrecosVoo {
       throw new ServiceUnavailableException(
         MENSAGENS_ERRO.ignavConsultaIndisponivel,
       );
+    }
+  }
+
+  async obterLinksCompra(ignavId: string): Promise<LinkCompra[]> {
+    const apiKey = this.configService.getOrThrow<string>('IGNAV_API_KEY');
+    const baseUrl = this.configService.getOrThrow<string>('IGNAV_BASE_URL');
+    try {
+      const resposta = await firstValueFrom(this.httpService.post<unknown>(
+        `${baseUrl.replace(/\/$/, '')}/fares/booking-links`, { ignav_id: ignavId },
+        { headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey } },
+      ));
+      const resultado = respostaLinksCompraSchema.safeParse(resposta.data);
+      if (!resultado.success) throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavConsultaIndisponivel);
+      return resultado.data.booking_options.flatMap((opcao) => opcao.links.map((link) => ({ fornecedor: link.provider_name, tipoFornecedor: link.provider_type, url: link.url })));
+    } catch (erro: unknown) {
+      if (erro instanceof ServiceUnavailableException) throw erro;
+      this.registrarFalhaConsulta(this.identificarTipoFalha(erro));
+      throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavConsultaIndisponivel);
     }
   }
 

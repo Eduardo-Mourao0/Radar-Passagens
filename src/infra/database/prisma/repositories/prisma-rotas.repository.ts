@@ -181,6 +181,7 @@ export class PrismaRotasRepository implements RotasRepository {
       preco: HistoricoPrecoEntity.normalizarPreco(historico.preco.toString()),
       moeda: historico.moeda,
       companhia: historico.companhia,
+      ignavId: historico.ignavId,
       coletadoEm: historico.coletadoEm,
     };
   }

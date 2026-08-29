@@ -86,6 +86,7 @@ export type HistoricoPreco = Readonly<{
   preco: string;
   moeda: string;
   companhia: string;
+  ignavId: string | null;
   coletadoEm: Date;
 }>;
 
@@ -94,6 +95,7 @@ export type DadosNovoHistoricoPreco = Readonly<{
   preco: string;
   moeda: string;
   companhia: string;
+  ignavId?: string;
 }>;
 
 export type NovoHistoricoPreco = DadosNovoHistoricoPreco;

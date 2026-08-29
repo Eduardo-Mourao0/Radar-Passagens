@@ -120,9 +120,15 @@ describe('Casos de uso de rotas', () => {
   });
 
   it('lista as rotas', async () => {
-    repositorio.listar.mockResolvedValue([rota]);
+    const rotaComAlerta = {
+      ...rota,
+      alertaPreco: { precoAlvo: '1500.00', disparado: false },
+    };
+    repositorio.listar.mockResolvedValue([rotaComAlerta]);
 
-    await expect(listarRotasUseCase.execute()).resolves.toEqual([rota]);
+    await expect(listarRotasUseCase.execute()).resolves.toEqual([
+      rotaComAlerta,
+    ]);
   });
 
   it('retorna o histórico de uma rota existente', async () => {

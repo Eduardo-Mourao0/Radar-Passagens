@@ -13,6 +13,7 @@ import {
   NovoAlertaPreco,
   NovoHistoricoPreco,
   Rota,
+  RotaComAlerta,
 } from '../../../../domain/rotas/entities/rota.entity';
 import { RotasRepository } from '../../../../domain/rotas/repositories/rotas.repository';
 
@@ -58,12 +59,13 @@ export class PrismaRotasRepository implements RotasRepository {
     await this.prisma.rota.deleteMany({ where: { id } });
   }
 
-  async listar(): Promise<Rota[]> {
+  async listar(): Promise<RotaComAlerta[]> {
     const rotas = await this.prisma.rota.findMany({
       orderBy: { criadoEm: 'desc' },
+      include: { alertaPreco: true },
     });
 
-    return rotas.map((rota) => this.mapearRota(rota));
+    return rotas.map((rota) => this.mapearRotaComAlerta(rota));
   }
 
   async listarAtivas(): Promise<Rota[]> {
@@ -184,6 +186,20 @@ export class PrismaRotasRepository implements RotasRepository {
       dataVolta: rota.dataVolta,
       ativa: rota.ativa,
       criadoEm: rota.criadoEm,
+    };
+  }
+
+  private mapearRotaComAlerta(
+    rota: PrismaRota & { alertaPreco: PrismaAlertaPreco | null },
+  ): RotaComAlerta {
+    return {
+      ...this.mapearRota(rota),
+      alertaPreco: rota.alertaPreco
+        ? {
+            precoAlvo: rota.alertaPreco.precoAlvo.toString(),
+            disparado: rota.alertaPreco.disparado,
+          }
+        : null,
     };
   }
 

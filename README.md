@@ -100,15 +100,16 @@ Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e rep
 
 ## Endpoints disponíveis
 
-| Método  | Rota                      | Descrição                                        |
-| ------- | ------------------------- | ------------------------------------------------ |
-| `POST`  | `/rotas`                  | Cadastra uma rota para monitoramento.            |
-| `GET`   | `/rotas`                  | Lista as rotas cadastradas.                      |
-| `PATCH` | `/rotas/:id/desativar`    | Interrompe o monitoramento de uma rota.          |
-| `PATCH` | `/rotas/:id/reativar`     | Retoma o monitoramento de uma rota.              |
-| `GET`   | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
-| `PUT`   | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
-| `POST`  | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
+| Método   | Rota                      | Descrição                                        |
+| -------- | ------------------------- | ------------------------------------------------ |
+| `POST`   | `/rotas`                  | Cadastra uma rota para monitoramento.            |
+| `GET`    | `/rotas`                  | Lista as rotas cadastradas.                      |
+| `PATCH`  | `/rotas/:id/desativar`    | Interrompe o monitoramento de uma rota.          |
+| `PATCH`  | `/rotas/:id/reativar`     | Retoma o monitoramento de uma rota.              |
+| `DELETE` | `/rotas/:id`              | Exclui uma rota e todos os dados vinculados.     |
+| `GET`    | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
+| `PUT`    | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
+| `POST`   | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
 
 ### Criar rota
 
@@ -147,6 +148,14 @@ PATCH /rotas/:id/reativar
 ```
 
 A rota volta a participar das coletas periódicas. Repetir a requisição não causa erro. Rotas cuja data de ida já passou não podem ser reativadas; o job também desativa automaticamente rotas vencidas antes de cada ciclo de coleta.
+
+### Excluir rota
+
+```http
+DELETE /rotas/:id
+```
+
+A exclusão é permanente. O banco remove em cascata o alerta configurado e todo o histórico de preços associado à rota.
 
 ### Respostas de erro
 

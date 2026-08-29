@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
 import { DesativarRotaUseCase } from '../../../application/rotas/use-cases/desativar-rota.use-case';
+import { ExcluirRotaUseCase } from '../../../application/rotas/use-cases/excluir-rota.use-case';
 import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
@@ -14,6 +15,7 @@ import { RotasController } from './rotas.controller';
 describe('RotasController', () => {
   const criarRotaUseCase = { execute: jest.fn() };
   const desativarRotaUseCase = { execute: jest.fn() };
+  const excluirRotaUseCase = { execute: jest.fn() };
   const reativarRotaUseCase = { execute: jest.fn() };
   const configurarAlertaPrecoUseCase = { execute: jest.fn() };
   const listarRotasUseCase = { execute: jest.fn() };
@@ -34,6 +36,7 @@ describe('RotasController', () => {
       providers: [
         { provide: CriarRotaUseCase, useValue: criarRotaUseCase },
         { provide: DesativarRotaUseCase, useValue: desativarRotaUseCase },
+        { provide: ExcluirRotaUseCase, useValue: excluirRotaUseCase },
         { provide: ReativarRotaUseCase, useValue: reativarRotaUseCase },
         {
           provide: ConfigurarAlertaPrecoUseCase,
@@ -44,7 +47,10 @@ describe('RotasController', () => {
           provide: ListarHistoricoRotaUseCase,
           useValue: listarHistoricoRotaUseCase,
         },
-        { provide: ObterLinksCompraRotaUseCase, useValue: obterLinksCompraRotaUseCase },
+        {
+          provide: ObterLinksCompraRotaUseCase,
+          useValue: obterLinksCompraRotaUseCase,
+        },
         { provide: PriceCheckJob, useValue: priceCheckJob },
         { provide: ConfigService, useValue: configService },
       ],
@@ -64,6 +70,7 @@ describe('RotasController', () => {
       providers: [
         { provide: CriarRotaUseCase, useValue: criarRotaUseCase },
         { provide: DesativarRotaUseCase, useValue: desativarRotaUseCase },
+        { provide: ExcluirRotaUseCase, useValue: excluirRotaUseCase },
         { provide: ReativarRotaUseCase, useValue: reativarRotaUseCase },
         {
           provide: ConfigurarAlertaPrecoUseCase,
@@ -74,7 +81,10 @@ describe('RotasController', () => {
           provide: ListarHistoricoRotaUseCase,
           useValue: listarHistoricoRotaUseCase,
         },
-        { provide: ObterLinksCompraRotaUseCase, useValue: obterLinksCompraRotaUseCase },
+        {
+          provide: ObterLinksCompraRotaUseCase,
+          useValue: obterLinksCompraRotaUseCase,
+        },
         { provide: PriceCheckJob, useValue: priceCheckJob },
         { provide: ConfigService, useValue: configService },
       ],

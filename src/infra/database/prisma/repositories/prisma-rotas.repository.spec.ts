@@ -2,6 +2,21 @@ import { PrismaService } from '../prisma.service';
 import { PrismaRotasRepository } from './prisma-rotas.repository';
 
 describe('PrismaRotasRepository', () => {
+  it('nao falha quando a rota ja foi excluida em outra requisicao', async () => {
+    const prismaMock = {
+      rota: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+    };
+    const prisma = prismaMock as unknown as PrismaService;
+    const repositorio = new PrismaRotasRepository(prisma);
+
+    await expect(repositorio.excluir('rota-1')).resolves.toBeUndefined();
+    expect(prismaMock.rota.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'rota-1' },
+    });
+  });
+
   it('atualiza o identificador da Ignav quando a cotacao nao mudou', async () => {
     const historicoExistente = {
       id: 'historico-1',

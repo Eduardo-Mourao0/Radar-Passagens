@@ -5,9 +5,9 @@ import {
   ROTAS_REPOSITORY,
   RotasRepository,
 } from '../../../domain/rotas/repositories/rotas.repository';
-import { DesativarRotaUseCase } from './desativar-rota.use-case';
+import { ExcluirRotaUseCase } from './excluir-rota.use-case';
 
-describe('DesativarRotaUseCase', () => {
+describe('ExcluirRotaUseCase', () => {
   const rota = {
     id: 'rota-1',
     chaveMonitoramento: 'BSB:FOR:2026-12-05:2026-12-12',
@@ -35,43 +35,33 @@ describe('DesativarRotaUseCase', () => {
     registrarHistoricoSeDiferente: jest.fn(),
   };
 
-  let useCase: DesativarRotaUseCase;
+  let useCase: ExcluirRotaUseCase;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     const modulo = await Test.createTestingModule({
       providers: [
-        DesativarRotaUseCase,
+        ExcluirRotaUseCase,
         { provide: ROTAS_REPOSITORY, useValue: repositorio },
       ],
     }).compile();
-    useCase = modulo.get(DesativarRotaUseCase);
+    useCase = modulo.get(ExcluirRotaUseCase);
   });
 
-  it('desativa uma rota ativa', async () => {
+  it('exclui a rota existente', async () => {
     repositorio.buscarPorId.mockResolvedValue(rota);
-    repositorio.desativar.mockResolvedValue({ ...rota, ativa: false });
+    repositorio.excluir.mockResolvedValue(undefined);
 
-    await expect(useCase.execute({ rotaId: rota.id })).resolves.toMatchObject({
-      ativa: false,
-    });
-    expect(repositorio.desativar).toHaveBeenCalledWith(rota.id);
+    await expect(useCase.execute({ rotaId: rota.id })).resolves.toBeUndefined();
+    expect(repositorio.excluir).toHaveBeenCalledWith(rota.id);
   });
 
-  it('não altera uma rota que já está inativa', async () => {
-    repositorio.buscarPorId.mockResolvedValue({ ...rota, ativa: false });
-
-    await expect(useCase.execute({ rotaId: rota.id })).resolves.toMatchObject({
-      ativa: false,
-    });
-    expect(repositorio.desativar).not.toHaveBeenCalled();
-  });
-
-  it('informa quando a rota não existe', async () => {
+  it('informa quando a rota nao existe', async () => {
     repositorio.buscarPorId.mockResolvedValue(null);
 
     await expect(
       useCase.execute({ rotaId: 'rota-inexistente' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+    expect(repositorio.excluir).not.toHaveBeenCalled();
   });
 });

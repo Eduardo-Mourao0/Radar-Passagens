@@ -14,6 +14,7 @@ export interface RotasRepository {
   criar(dados: NovaRota): Promise<Rota>;
   reativar(id: string): Promise<Rota>;
   desativar(id: string): Promise<Rota>;
+  excluir(id: string): Promise<void>;
   listar(): Promise<Rota[]>;
   listarAtivas(): Promise<Rota[]>;
   desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number>;

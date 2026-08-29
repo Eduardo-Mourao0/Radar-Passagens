@@ -3,4 +3,5 @@ export type RegistrarHistoricoPrecoCommand = Readonly<{
   preco: string;
   moeda: string;
   companhia: string;
+  ignavId?: string;
 }>;

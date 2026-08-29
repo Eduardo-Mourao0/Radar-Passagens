@@ -8,6 +8,7 @@ import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cas
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
 import { ReativarRotaUseCase } from '../../../application/rotas/use-cases/reativar-rota.use-case';
+import { ObterLinksCompraRotaUseCase } from '../../../application/rotas/use-cases/obter-links-compra-rota.use-case';
 import { RotasController } from './rotas.controller';
 
 describe('RotasController', () => {
@@ -17,6 +18,7 @@ describe('RotasController', () => {
   const configurarAlertaPrecoUseCase = { execute: jest.fn() };
   const listarRotasUseCase = { execute: jest.fn() };
   const listarHistoricoRotaUseCase = { execute: jest.fn() };
+  const obterLinksCompraRotaUseCase = { execute: jest.fn() };
   const priceCheckJob = { executar: jest.fn() };
   const configService = { get: jest.fn() };
 
@@ -42,6 +44,7 @@ describe('RotasController', () => {
           provide: ListarHistoricoRotaUseCase,
           useValue: listarHistoricoRotaUseCase,
         },
+        { provide: ObterLinksCompraRotaUseCase, useValue: obterLinksCompraRotaUseCase },
         { provide: PriceCheckJob, useValue: priceCheckJob },
         { provide: ConfigService, useValue: configService },
       ],
@@ -71,6 +74,7 @@ describe('RotasController', () => {
           provide: ListarHistoricoRotaUseCase,
           useValue: listarHistoricoRotaUseCase,
         },
+        { provide: ObterLinksCompraRotaUseCase, useValue: obterLinksCompraRotaUseCase },
         { provide: PriceCheckJob, useValue: priceCheckJob },
         { provide: ConfigService, useValue: configService },
       ],

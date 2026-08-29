@@ -18,6 +18,7 @@ import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cas
 import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases/listar-historico-rota.use-case';
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
 import { ReativarRotaUseCase } from '../../../application/rotas/use-cases/reativar-rota.use-case';
+import { ObterLinksCompraRotaUseCase } from '../../../application/rotas/use-cases/obter-links-compra-rota.use-case';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 import {
   criarRotaSchema,
@@ -41,6 +42,7 @@ export class RotasController {
     private readonly configurarAlertaPrecoUseCase: ConfigurarAlertaPrecoUseCase,
     private readonly listarRotasUseCase: ListarRotasUseCase,
     private readonly listarHistoricoRotaUseCase: ListarHistoricoRotaUseCase,
+    private readonly obterLinksCompraRotaUseCase: ObterLinksCompraRotaUseCase,
     private readonly priceCheckJob: PriceCheckJob,
     private readonly configService: ConfigService,
   ) {}
@@ -77,6 +79,13 @@ export class RotasController {
     @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
   ) {
     return this.listarHistoricoRotaUseCase.execute(params.id);
+  }
+
+  @Get(':id/links-compra')
+  obterLinksCompra(
+    @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
+  ) {
+    return this.obterLinksCompraRotaUseCase.execute(params.id);
   }
 
   @Put(':id/alerta-preco')

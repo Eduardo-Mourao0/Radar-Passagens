@@ -10,6 +10,7 @@ import { ListarHistoricoRotaUseCase } from '../../application/rotas/use-cases/li
 import { ListarRotasUseCase } from '../../application/rotas/use-cases/listar-rotas.use-case';
 import { ReativarRotaUseCase } from '../../application/rotas/use-cases/reativar-rota.use-case';
 import { RegistrarHistoricoPrecoUseCase } from '../../application/rotas/use-cases/registrar-historico-preco.use-case';
+import { ObterLinksCompraRotaUseCase } from '../../application/rotas/use-cases/obter-links-compra-rota.use-case';
 import { ROTAS_REPOSITORY } from '../../domain/rotas/repositories/rotas.repository';
 import { PrismaRotasRepository } from '../../infra/database/prisma/repositories/prisma-rotas.repository';
 import { IgnavModule } from '../../infra/ignav/ignav.module';
@@ -30,6 +31,7 @@ import { TelegramNotificadorAlertaPrecoService } from '../../infra/notificacoes/
     ListarRotasUseCase,
     ListarHistoricoRotaUseCase,
     RegistrarHistoricoPrecoUseCase,
+    ObterLinksCompraRotaUseCase,
     PrismaRotasRepository,
     {
       provide: ROTAS_REPOSITORY,

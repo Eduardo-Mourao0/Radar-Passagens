@@ -6,8 +6,16 @@ export type CotacaoDeVoo = Readonly<{
   preco: string;
   moeda: string;
   companhia: string;
+  ignavId?: string;
+}>;
+
+export type LinkCompra = Readonly<{
+  fornecedor: string;
+  tipoFornecedor: 'airline' | 'third_party';
+  url: string;
 }>;
 
 export interface ConsultarPrecosVoo {
   consultarMenorPreco(rota: Rota): Promise<CotacaoDeVoo | null>;
+  obterLinksCompra(ignavId: string): Promise<LinkCompra[]>;
 }

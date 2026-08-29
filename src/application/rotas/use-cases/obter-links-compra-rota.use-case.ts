@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { z } from 'zod';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
@@ -13,10 +14,13 @@ export class ObterLinksCompraRotaUseCase {
   ) {}
 
   async execute(rotaId: string) {
+    if (!z.uuid().safeParse(rotaId).success) {
+      throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
+    }
     const rota = await this.rotasRepository.buscarPorId(rotaId);
     if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
     const historico = await this.rotasRepository.listarHistorico(rotaId);
-    const cotacao = historico.find((item) => item.ignavId);
+    const [cotacao] = historico.filter((item) => item.ignavId);
     if (!cotacao?.ignavId) throw new NotFoundException('Nenhum link de compra estÃ¡ disponÃ­vel para a Ãºltima cotaÃ§Ã£o desta rota.');
     return this.consultarPrecosVoo.obterLinksCompra(cotacao.ignavId);
   }

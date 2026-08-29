@@ -2,6 +2,7 @@ import { HttpService } from '@nestjs/axios';
 import {
   Injectable,
   Logger,
+  BadRequestException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -93,7 +94,7 @@ export class IgnavService implements ConsultarPrecosVoo {
               'X-Api-Key': apiKey,
             },
           },
-        ),
+        ).pipe(timeout(10_000)),
       );
 
       const resultado = respostaIgnavSchema.safeParse(resposta.data);
@@ -149,6 +150,9 @@ export class IgnavService implements ConsultarPrecosVoo {
   }
 
   async obterLinksCompra(ignavId: string): Promise<LinkCompra[]> {
+    if (!ignavId.trim()) {
+      throw new BadRequestException('ignavId nao pode ser vazio.');
+    }
     const apiKey = this.configService.getOrThrow<string>('IGNAV_API_KEY');
     const baseUrl = this.configService.getOrThrow<string>('IGNAV_BASE_URL');
     try {
@@ -167,14 +171,19 @@ export class IgnavService implements ConsultarPrecosVoo {
           .pipe(timeout(10_000)),
       );
       const resultado = respostaLinksCompraSchema.safeParse(resposta.data);
-      if (!resultado.success) throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavConsultaIndisponivel);
-      return resultado.data.booking_options.flatMap((opcao) =>
+      if (!resultado.success) {
+        this.registrarFalhaConsulta('resposta_invalida');
+        throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavConsultaIndisponivel);
+      }
+      const links = resultado.data.booking_options.flatMap((opcao) =>
         opcao.links.map((link) => ({
           fornecedor: link.provider_name,
           tipoFornecedor: link.provider_type,
           url: link.url,
         })),
       );
+      if (links.length === 0) return [];
+      return links;
     } catch (erro: unknown) {
       if (erro instanceof ServiceUnavailableException) throw erro;
       this.registrarFalhaConsulta(this.identificarTipoFalha(erro));

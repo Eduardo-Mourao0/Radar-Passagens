@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { z } from 'zod';
 import {
   ConsultarPrecosVoo,
@@ -152,13 +152,29 @@ export class IgnavService implements ConsultarPrecosVoo {
     const apiKey = this.configService.getOrThrow<string>('IGNAV_API_KEY');
     const baseUrl = this.configService.getOrThrow<string>('IGNAV_BASE_URL');
     try {
-      const resposta = await firstValueFrom(this.httpService.post<unknown>(
-        `${baseUrl.replace(/\/$/, '')}/fares/booking-links`, { ignav_id: ignavId },
-        { headers: { 'Content-Type': 'application/json', 'X-Api-Key': apiKey } },
-      ));
+      const resposta = await firstValueFrom(
+        this.httpService
+          .post<unknown>(
+            `${baseUrl.replace(/\/$/, '')}/fares/booking-links`,
+            { ignav_id: ignavId },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': apiKey,
+              },
+            },
+          )
+          .pipe(timeout(10_000)),
+      );
       const resultado = respostaLinksCompraSchema.safeParse(resposta.data);
       if (!resultado.success) throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavConsultaIndisponivel);
-      return resultado.data.booking_options.flatMap((opcao) => opcao.links.map((link) => ({ fornecedor: link.provider_name, tipoFornecedor: link.provider_type, url: link.url })));
+      return resultado.data.booking_options.flatMap((opcao) =>
+        opcao.links.map((link) => ({
+          fornecedor: link.provider_name,
+          tipoFornecedor: link.provider_type,
+          url: link.url,
+        })),
+      );
     } catch (erro: unknown) {
       if (erro instanceof ServiceUnavailableException) throw erro;
       this.registrarFalhaConsulta(this.identificarTipoFalha(erro));

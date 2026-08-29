@@ -103,7 +103,7 @@ Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e rep
 | Método   | Rota                      | Descrição                                        |
 | -------- | ------------------------- | ------------------------------------------------ |
 | `POST`   | `/rotas`                  | Cadastra uma rota para monitoramento.            |
-| `GET`    | `/rotas`                  | Lista as rotas cadastradas.                      |
+| `GET`    | `/rotas`                  | Lista as rotas cadastradas, com suas metas.      |
 | `PATCH`  | `/rotas/:id/desativar`    | Interrompe o monitoramento de uma rota.          |
 | `PATCH`  | `/rotas/:id/reativar`     | Retoma o monitoramento de uma rota.              |
 | `DELETE` | `/rotas/:id`              | Exclui uma rota e todos os dados vinculados.     |

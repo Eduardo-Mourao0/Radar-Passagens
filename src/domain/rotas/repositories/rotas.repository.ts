@@ -5,6 +5,7 @@ import {
   NovaRota,
   NovoHistoricoPreco,
   Rota,
+  RotaComAlerta,
 } from '../entities/rota.entity';
 
 export const ROTAS_REPOSITORY = Symbol('ROTAS_REPOSITORY');
@@ -15,7 +16,7 @@ export interface RotasRepository {
   reativar(id: string): Promise<Rota>;
   desativar(id: string): Promise<Rota>;
   excluir(id: string): Promise<void>;
-  listar(): Promise<Rota[]>;
+  listar(): Promise<RotaComAlerta[]>;
   listarAtivas(): Promise<Rota[]>;
   desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number>;
   buscarPorId(id: string): Promise<Rota | null>;

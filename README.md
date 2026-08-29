@@ -72,6 +72,7 @@ O arquivo `.env.example` contém valores locais prontos para o Docker.
 | -------------------- | ---------------------------------------------------- |
 | `PORT`               | Porta HTTP da API. Padrão: `3000`.                   |
 | `NODE_ENV`           | Ambiente da aplicação. Use `development` localmente. |
+| `FRONTEND_URL`       | Domínio do frontend permitido pelo CORS em produção. |
 | `POSTGRES_USER`      | Usuário do PostgreSQL no container.                  |
 | `POSTGRES_PASSWORD`  | Senha do PostgreSQL no container.                    |
 | `POSTGRES_DB`        | Nome do banco de dados.                              |
@@ -83,6 +84,8 @@ O arquivo `.env.example` contém valores locais prontos para o Docker.
 | `TELEGRAM_CHAT_ID`   | Identificador do chat ou grupo que recebe alertas.   |
 
 Nunca envie o arquivo `.env` para o repositório.
+
+Em desenvolvimento, o CORS aceita somente `http://localhost:5173`. Em produção, defina `FRONTEND_URL` com o domínio público do frontend, por exemplo `https://radar-passagens-web.example.com`.
 
 ### Configurar o Telegram
 

@@ -113,13 +113,9 @@ export class RotasController {
 
   @Post('verificar-precos')
   @HttpCode(HttpStatus.OK)
-  async verificarPrecos(): Promise<{ mensagem: string }> {
-    if (this.configService.get<string>('NODE_ENV') === 'production') {
-      throw new ForbiddenException();
-    }
-
+    async verificarPrecos(): Promise<{ mensagem: string }> {
     await this.priceCheckJob.executar();
 
-    return { mensagem: 'Verificação de preços concluída.' };
+   return { mensagem: 'Verificação de preços concluída.' };
   }
 }

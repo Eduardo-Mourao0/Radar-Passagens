@@ -150,7 +150,7 @@ export class IgnavService implements ConsultarPrecosVoo {
   }
 
   async obterLinksCompra(ignavId: string): Promise<LinkCompra[]> {
-    if (!ignavId.trim()) {
+    if (typeof ignavId !== 'string' || !ignavId.trim()) {
       throw new BadRequestException('ignavId nao pode ser vazio.');
     }
     const apiKey = this.configService.getOrThrow<string>('IGNAV_API_KEY');
@@ -182,7 +182,10 @@ export class IgnavService implements ConsultarPrecosVoo {
           url: link.url,
         })),
       );
-      if (links.length === 0) return [];
+      if (links.length === 0) {
+        this.logger.warn(JSON.stringify({ evento: 'ignav_link_compra_indisponivel' }));
+        return [];
+      }
       return links;
     } catch (erro: unknown) {
       if (erro instanceof ServiceUnavailableException) throw erro;

@@ -8,9 +8,9 @@ export class LimiteAutenticacaoService {
   private readonly janelas = new Map<string, Janela>();
 
   validarInicio(telefone: string, ip: string): void {
-    this.consumir(`telefone:${telefone}`, 3, 60 * 60 * 1000);
+    this.consumir(`telefone:${telefone}`, 5, 10 * 60 * 1000);
     this.consumir(`ip:${ip}`, 10, 60 * 60 * 1000);
-    this.consumir(`telefone-ip:${telefone}:${ip}`, 1, 10 * 60 * 1000);
+    this.consumir(`telefone-ip:${telefone}:${ip}`, 5, 10 * 60 * 1000);
   }
 
   private consumir(chave: string, limite: number, janelaMs: number): void {

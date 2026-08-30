@@ -50,4 +50,36 @@ describe('AutenticacaoController', () => {
       tokenInicio: undefined,
     });
   });
+
+  it('ignora /start com token fora do formato esperado', async () => {
+    const modulo = await Test.createTestingModule({
+      controllers: [AutenticacaoController],
+      providers: [
+        { provide: IniciarVerificacaoTelefoneUseCase, useValue: {} },
+        { provide: ObterStatusVerificacaoUseCase, useValue: {} },
+        { provide: AutenticarUsuarioUseCase, useValue: {} },
+        { provide: RedefinirPinUseCase, useValue: {} },
+        {
+          provide: ProcessarAtualizacaoTelegramUseCase,
+          useValue: processarAtualizacaoTelegram,
+        },
+        { provide: SessaoService, useValue: {} },
+        {
+          provide: ConfigService,
+          useValue: { getOrThrow: jest.fn(() => 'segredo') },
+        },
+      ],
+    }).compile();
+    const controller = modulo.get(AutenticacaoController);
+
+    await controller.webhookTelegram('segredo', {
+      message: {
+        text: '/start token-invalido',
+        chat: { id: 123456, type: 'private' },
+        from: { id: 654321 },
+      },
+    });
+
+    expect(processarAtualizacaoTelegram.iniciar).not.toHaveBeenCalled();
+  });
 });

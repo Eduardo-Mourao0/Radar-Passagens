@@ -94,10 +94,14 @@ export class ProcessarAtualizacaoTelegramUseCase {
         `Seu código de verificação é: ${codigo}`,
       );
     } catch (erro: unknown) {
-      await this.usuariosRepository.cancelarCodigoTelegram(
-        verificacao.id,
-        codigoHash,
-      );
+      try {
+        await this.usuariosRepository.cancelarCodigoTelegram(
+          verificacao.id,
+          codigoHash,
+        );
+      } catch {
+        // A falha original de envio é a informação mais útil para o webhook.
+      }
       throw erro;
     }
   }

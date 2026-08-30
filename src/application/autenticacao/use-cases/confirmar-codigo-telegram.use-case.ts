@@ -8,6 +8,7 @@ import {
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { UsuariosRepository } from '../../../domain/usuarios/repositories/usuarios.repository';
+import { LimiteAutenticacaoService } from '../../../infra/autenticacao/limite-autenticacao.service';
 
 @Injectable()
 export class ConfirmarCodigoTelegramUseCase {
@@ -16,9 +17,15 @@ export class ConfirmarCodigoTelegramUseCase {
   constructor(
     @Inject(USUARIOS_REPOSITORY)
     private readonly usuariosRepository: UsuariosRepository,
+    private readonly limiteAutenticacao: LimiteAutenticacaoService,
   ) {}
 
-  async execute(verificacaoId: string, codigo: string): Promise<void> {
+  async execute(
+    verificacaoId: string,
+    codigo: string,
+    ip: string,
+  ): Promise<void> {
+    this.limiteAutenticacao.validarConfirmacaoCodigo(ip);
     const agora = new Date();
     const verificacao =
       await this.usuariosRepository.buscarVerificacaoPorId(verificacaoId);

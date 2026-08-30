@@ -208,6 +208,31 @@ describe('Casos de uso de autenticação', () => {
     );
   });
 
+  it('preserva o erro de envio se a limpeza do código falhar', async () => {
+    const verificacao = criarVerificacao();
+    usuariosRepository.buscarVerificacaoPorTokenInicio.mockResolvedValue(
+      verificacao,
+    );
+    mensageiroTelegram.enviarMensagem.mockRejectedValueOnce(
+      new Error('falha de rede'),
+    );
+    usuariosRepository.cancelarCodigoTelegram.mockRejectedValueOnce(
+      new Error('falha ao limpar'),
+    );
+    const useCase = new ProcessarAtualizacaoTelegramUseCase(
+      usuariosRepository,
+      mensageiroTelegram,
+    );
+
+    await expect(
+      useCase.iniciar({
+        tokenInicio: verificacao.tokenInicio,
+        chatId: '123456',
+        telegramUsuarioId: '654321',
+      }),
+    ).rejects.toThrow('falha de rede');
+  });
+
   it('orienta o usuário quando recebe /start sem link de confirmação', async () => {
     const useCase = new ProcessarAtualizacaoTelegramUseCase(
       usuariosRepository,

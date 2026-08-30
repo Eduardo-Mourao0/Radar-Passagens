@@ -13,6 +13,10 @@ export class LimiteAutenticacaoService {
     this.consumir(`telefone-ip:${telefone}:${ip}`, 5, 5 * 60 * 1000);
   }
 
+  validarConfirmacaoCodigo(ip: string): void {
+    this.consumir(`codigo:${ip}`, 10, 60 * 1000);
+  }
+
   private consumir(chave: string, limite: number, janelaMs: number): void {
     const agora = Date.now();
     const atual = this.janelas.get(chave);

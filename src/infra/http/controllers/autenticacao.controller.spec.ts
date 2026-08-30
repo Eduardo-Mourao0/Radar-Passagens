@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import type { Request } from 'express';
 import { AutenticarUsuarioUseCase } from '../../../application/autenticacao/use-cases/autenticar-usuario.use-case';
 import { ConfirmarCodigoTelegramUseCase } from '../../../application/autenticacao/use-cases/confirmar-codigo-telegram.use-case';
 import { IniciarVerificacaoTelefoneUseCase } from '../../../application/autenticacao/use-cases/iniciar-verificacao-telefone.use-case';
@@ -98,12 +99,14 @@ describe('AutenticacaoController', () => {
         {
           codigo: '123456',
         },
+        { headers: {}, ip: '127.0.0.1' } as Request,
       ),
     ).resolves.toBeUndefined();
 
     expect(confirmarCodigoTelegram.execute).toHaveBeenCalledWith(
       'c9e0e8f7-39ef-4279-87a8-2867f5db95eb',
       '123456',
+      '127.0.0.1',
     );
   });
 });

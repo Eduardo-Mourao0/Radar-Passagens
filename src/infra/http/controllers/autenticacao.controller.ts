@@ -100,8 +100,13 @@ export class AutenticacaoController {
     params: VerificacaoParams,
     @Body(new ZodValidationPipe(confirmarCodigoTelegramSchema))
     input: ConfirmarCodigoTelegramInput,
+    @Req() request: Request,
   ): Promise<void> {
-    await this.confirmarCodigoTelegram.execute(params.id, input.codigo);
+    await this.confirmarCodigoTelegram.execute(
+      params.id,
+      input.codigo,
+      this.obterIp(request),
+    );
   }
 
   @Post('login')

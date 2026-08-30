@@ -10,12 +10,10 @@ import { AutenticacaoController } from './autenticacao.controller';
 
 describe('AutenticacaoController', () => {
   const processarAtualizacaoTelegram = { iniciar: jest.fn() };
+  let controller: AutenticacaoController;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
-  });
-
-  it('encaminha /start simples para o caso de uso', async () => {
     const modulo = await Test.createTestingModule({
       controllers: [AutenticacaoController],
       providers: [
@@ -34,8 +32,10 @@ describe('AutenticacaoController', () => {
         },
       ],
     }).compile();
-    const controller = modulo.get(AutenticacaoController);
+    controller = modulo.get(AutenticacaoController);
+  });
 
+  it('encaminha /start simples para o caso de uso', async () => {
     await controller.webhookTelegram('segredo', {
       message: {
         text: '/start',
@@ -51,27 +51,29 @@ describe('AutenticacaoController', () => {
     });
   });
 
-  it('ignora /start com token fora do formato esperado', async () => {
-    const modulo = await Test.createTestingModule({
-      controllers: [AutenticacaoController],
-      providers: [
-        { provide: IniciarVerificacaoTelefoneUseCase, useValue: {} },
-        { provide: ObterStatusVerificacaoUseCase, useValue: {} },
-        { provide: AutenticarUsuarioUseCase, useValue: {} },
-        { provide: RedefinirPinUseCase, useValue: {} },
-        {
-          provide: ProcessarAtualizacaoTelegramUseCase,
-          useValue: processarAtualizacaoTelegram,
-        },
-        { provide: SessaoService, useValue: {} },
-        {
-          provide: ConfigService,
-          useValue: { getOrThrow: jest.fn(() => 'segredo') },
-        },
-      ],
-    }).compile();
-    const controller = modulo.get(AutenticacaoController);
+  it.each([
+    { texto: '/start@RadarPassagensBot', tokenInicio: undefined },
+    {
+      texto: `/start@RadarPassagensBot ${'a'.repeat(43)}`,
+      tokenInicio: 'a'.repeat(43),
+    },
+  ])('encaminha $texto para o caso de uso', async ({ texto, tokenInicio }) => {
+    await controller.webhookTelegram('segredo', {
+      message: {
+        text: texto,
+        chat: { id: 123456, type: 'private' },
+        from: { id: 654321 },
+      },
+    });
 
+    expect(processarAtualizacaoTelegram.iniciar).toHaveBeenCalledWith({
+      chatId: '123456',
+      telegramUsuarioId: '654321',
+      tokenInicio,
+    });
+  });
+
+  it('ignora /start com token fora do formato esperado', async () => {
     await controller.webhookTelegram('segredo', {
       message: {
         text: '/start token-invalido',

@@ -164,8 +164,9 @@ export class AutenticacaoController {
       /^\/start(?:@\w+)?(?:\s+([A-Za-z0-9_-]{43}))?$/,
     );
     if (inicio) {
+      const [, tokenInicio] = inicio;
       await this.processarAtualizacaoTelegram.iniciar({
-        tokenInicio: inicio[1],
+        tokenInicio,
         chatId,
         telegramUsuarioId,
       });

@@ -10,8 +10,9 @@ import { SessaoService } from '../../../infra/autenticacao/sessao.service';
 export class AutenticarUsuarioUseCase {
   private static readonly MAXIMO_TENTATIVAS = 5;
   private static readonly BLOQUEIO_MS = 15 * 60 * 1000;
+  // Gerado com argon2.hash('0000', { type: argon2.argon2id }).
   private static readonly HASH_PIN_INEXISTENTE =
-    '$argon2id$v=19$m=65536,t=3,p=4$73uNCYsFiap1wPEApMJ9zw$A8YltJm4PaKuOGXX0ep01TcaGZbhPAXyqkiYkVMV1xM';
+    '$argon2id$v=19$m=65536,p=4,t=3$AekrjfWEK+YXJ9AyWp0Ccw$HdHVsVk/uP2fRuxeOcMzotyu0Xv9OgOj0sDB1FDTbC8';
 
   constructor(
     @Inject(USUARIOS_REPOSITORY)

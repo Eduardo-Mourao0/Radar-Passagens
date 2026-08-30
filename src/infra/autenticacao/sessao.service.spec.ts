@@ -2,6 +2,7 @@
 import * as argon2 from 'argon2';
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createHmac } from 'crypto';
 import type { Usuario } from '../../domain/usuarios/entities/usuario.entity';
 import type { UsuariosRepository } from '../../domain/usuarios/repositories/usuarios.repository';
 import { SessaoService } from './sessao.service';
@@ -51,5 +52,27 @@ describe('SessaoService', () => {
     expect(
       usuariosRepository.revogarRefreshTokensDoUsuario,
     ).toHaveBeenCalledWith(usuario.id, expect.any(Date));
+  });
+
+  it('rejeita JWT assinado que não declara HS256', () => {
+    const segredo = 'segredo-de-teste';
+    const cabecalho = Buffer.from(JSON.stringify({ alg: 'HS512' })).toString(
+      'base64url',
+    );
+    const payload = Buffer.from(
+      JSON.stringify({
+        sub: usuario.id,
+        tipo: 'acesso',
+        exp: Math.floor(Date.now() / 1000) + 60,
+      }),
+    ).toString('base64url');
+    const assinatura = createHmac('sha256', segredo)
+      .update(`${cabecalho}.${payload}`)
+      .digest('base64url');
+    const service = new SessaoService(configService, usuariosRepository);
+
+    expect(() =>
+      service.validarAccessToken(`${cabecalho}.${payload}.${assinatura}`),
+    ).toThrow(UnauthorizedException);
   });
 });

@@ -156,12 +156,19 @@ export class SessaoService {
 
   private validarJwt(token: string, segredo: string): JwtPayload {
     try {
-      const [cabecalho, payloadCodificado, assinatura] = token.split('.');
-      if (!cabecalho || !payloadCodificado || !assinatura) {
+      const [cabecalhoCodificado, payloadCodificado, assinatura] =
+        token.split('.');
+      if (!cabecalhoCodificado || !payloadCodificado || !assinatura) {
+        throw new UnauthorizedException();
+      }
+      const cabecalho: unknown = JSON.parse(
+        Buffer.from(cabecalhoCodificado, 'base64url').toString('utf8'),
+      );
+      if (!this.eCabecalhoJwtValido(cabecalho)) {
         throw new UnauthorizedException();
       }
       const assinaturaEsperada = createHmac('sha256', segredo)
-        .update(`${cabecalho}.${payloadCodificado}`)
+        .update(`${cabecalhoCodificado}.${payloadCodificado}`)
         .digest('base64url');
       if (
         assinatura.length !== assinaturaEsperada.length ||
@@ -198,6 +205,11 @@ export class SessaoService {
         (candidato.tipo === 'redefinicao-pin' &&
           typeof candidato.verificacaoId === 'string'))
     );
+  }
+
+  private eCabecalhoJwtValido(cabecalho: unknown): boolean {
+    if (!cabecalho || typeof cabecalho !== 'object') return false;
+    return (cabecalho as Record<string, unknown>).alg === 'HS256';
   }
 
   private registrarReutilizacao(

@@ -40,9 +40,9 @@ export class IniciarVerificacaoTelefoneUseCase {
     const recentes = await this.usuariosRepository.contarVerificacoesRecentes(
       telefone,
       input.finalidade,
-      new Date(Date.now() - 60 * 60 * 1000),
+      new Date(Date.now() - 5 * 60 * 1000),
     );
-    if (recentes >= 3) {
+    if (recentes >= 5) {
       throw new HttpException(
         'Muitas tentativas. Aguarde antes de tentar novamente.',
         HttpStatus.TOO_MANY_REQUESTS,

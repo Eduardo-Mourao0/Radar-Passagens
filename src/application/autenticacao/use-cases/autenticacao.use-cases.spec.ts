@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import * as argon2 from 'argon2';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import type {
@@ -223,6 +224,7 @@ describe('Casos de uso de autenticação', () => {
       usuariosRepository,
       mensageiroTelegram,
     );
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     await expect(
       useCase.iniciar({
@@ -231,6 +233,13 @@ describe('Casos de uso de autenticação', () => {
         telegramUsuarioId: '654321',
       }),
     ).rejects.toThrow('falha de rede');
+    expect(errorLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'telegram_codigo_cancelamento_falhou',
+        verificacaoId: verificacao.id,
+      }),
+    );
+    errorLog.mockRestore();
   });
 
   it('orienta o usuário quando recebe /start sem link de confirmação', async () => {

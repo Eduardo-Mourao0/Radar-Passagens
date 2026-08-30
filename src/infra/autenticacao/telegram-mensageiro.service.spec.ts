@@ -26,4 +26,19 @@ describe('TelegramMensageiroService', () => {
       },
     );
   });
+
+  it('falha quando o Telegram rejeita a mensagem', async () => {
+    const service = new TelegramMensageiroService(
+      {
+        post: jest.fn().mockReturnValue(of({ data: { ok: false } })),
+      } as unknown as HttpService,
+      {
+        getOrThrow: jest.fn(() => 'token-secreto'),
+      } as unknown as ConfigService,
+    );
+
+    await expect(service.enviarMensagem('123456', 'mensagem')).rejects.toThrow(
+      'Telegram rejeitou o envio da mensagem.',
+    );
+  });
 });

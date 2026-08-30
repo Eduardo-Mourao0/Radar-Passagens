@@ -14,7 +14,7 @@ export class LimiteAutenticacaoService {
   }
 
   validarConfirmacaoCodigo(ip: string): void {
-    this.consumir(`codigo:${ip}`, 10, 60 * 1000);
+    this.consumir(`codigo:${ip}`, 5, 60 * 1000);
   }
 
   private consumir(chave: string, limite: number, janelaMs: number): void {

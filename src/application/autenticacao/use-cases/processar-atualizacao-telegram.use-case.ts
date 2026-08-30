@@ -1,6 +1,6 @@
 import { randomInt } from 'crypto';
 import * as argon2 from 'argon2';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { MENSAGEIRO_TELEGRAM } from '../ports/mensageiro-telegram.port';
 import type { MensageiroTelegram } from '../ports/mensageiro-telegram.port';
 import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
@@ -14,6 +14,10 @@ type InicioTelegram = Readonly<{
 
 @Injectable()
 export class ProcessarAtualizacaoTelegramUseCase {
+  private readonly logger = new Logger(
+    ProcessarAtualizacaoTelegramUseCase.name,
+  );
+
   constructor(
     @Inject(USUARIOS_REPOSITORY)
     private readonly usuariosRepository: UsuariosRepository,
@@ -100,7 +104,12 @@ export class ProcessarAtualizacaoTelegramUseCase {
           codigoHash,
         );
       } catch {
-        // A falha original de envio é a informação mais útil para o webhook.
+        this.logger.error(
+          JSON.stringify({
+            evento: 'telegram_codigo_cancelamento_falhou',
+            verificacaoId: verificacao.id,
+          }),
+        );
       }
       throw erro;
     }

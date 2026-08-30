@@ -105,6 +105,9 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
     codigoHash: string;
     quando: Date;
   }): Promise<boolean> {
+    const reenvioPermitidoEm = new Date(dados.quando.getTime() - 60_000);
+
+    // The conditional update atomically reserves the code for this Telegram identity.
     const resultado = await this.prisma.verificacaoTelefone.updateMany({
       where: {
         id: dados.verificacaoId,
@@ -129,7 +132,7 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
               { codigoEnviadoEm: null },
               {
                 codigoEnviadoEm: {
-                  lte: new Date(dados.quando.getTime() - 60_000),
+                  lte: reenvioPermitidoEm,
                 },
               },
             ],

@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { AutenticarUsuarioUseCase } from '../../../application/autenticacao/use-cases/autenticar-usuario.use-case';
+import { ConfirmarCodigoTelegramUseCase } from '../../../application/autenticacao/use-cases/confirmar-codigo-telegram.use-case';
 import { IniciarVerificacaoTelefoneUseCase } from '../../../application/autenticacao/use-cases/iniciar-verificacao-telefone.use-case';
 import { ObterStatusVerificacaoUseCase } from '../../../application/autenticacao/use-cases/obter-status-verificacao.use-case';
 import { ProcessarAtualizacaoTelegramUseCase } from '../../../application/autenticacao/use-cases/processar-atualizacao-telegram.use-case';
@@ -10,6 +11,7 @@ import { AutenticacaoController } from './autenticacao.controller';
 
 describe('AutenticacaoController', () => {
   const processarAtualizacaoTelegram = { iniciar: jest.fn() };
+  const confirmarCodigoTelegram = { execute: jest.fn() };
   let controller: AutenticacaoController;
 
   beforeEach(async () => {
@@ -18,6 +20,10 @@ describe('AutenticacaoController', () => {
       controllers: [AutenticacaoController],
       providers: [
         { provide: IniciarVerificacaoTelefoneUseCase, useValue: {} },
+        {
+          provide: ConfirmarCodigoTelegramUseCase,
+          useValue: confirmarCodigoTelegram,
+        },
         { provide: ObterStatusVerificacaoUseCase, useValue: {} },
         { provide: AutenticarUsuarioUseCase, useValue: {} },
         { provide: RedefinirPinUseCase, useValue: {} },
@@ -83,5 +89,21 @@ describe('AutenticacaoController', () => {
     });
 
     expect(processarAtualizacaoTelegram.iniciar).not.toHaveBeenCalled();
+  });
+
+  it('confirma o código de verificação', async () => {
+    await expect(
+      controller.confirmarCodigo(
+        { id: 'c9e0e8f7-39ef-4279-87a8-2867f5db95eb' },
+        {
+          codigo: '123456',
+        },
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(confirmarCodigoTelegram.execute).toHaveBeenCalledWith(
+      'c9e0e8f7-39ef-4279-87a8-2867f5db95eb',
+      '123456',
+    );
   });
 });

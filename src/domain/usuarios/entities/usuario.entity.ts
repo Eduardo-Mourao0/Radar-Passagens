@@ -6,7 +6,7 @@ export type Usuario = Readonly<{
   telefone: string;
   senhaHash: string;
   telegramChatId: string;
-  telefoneVerificadoEm: Date;
+  verificadoEm: Date;
   tentativasLoginFalhas: number;
   bloqueadoAte: Date | null;
 }>;
@@ -21,6 +21,9 @@ export type VerificacaoTelefone = Readonly<{
   tokenInicio: string;
   telegramChatId: string | null;
   telegramUsuarioId: string | null;
+  codigoHash: string | null;
+  tentativasCodigo: number;
+  codigoEnviadoEm: Date | null;
   verificadaEm: Date | null;
   consumidaEm: Date | null;
   expiraEm: Date;

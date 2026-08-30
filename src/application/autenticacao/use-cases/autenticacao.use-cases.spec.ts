@@ -21,41 +21,44 @@ describe('Casos de uso de autenticação', () => {
     criarVerificacao: jest.fn(),
     atualizarTentativasLogin: jest.fn(),
     buscarVerificacaoPorTokenInicio: jest.fn(),
-    vincularTelegramNaVerificacao: jest.fn(),
-    finalizarVerificacaoTelegram: jest.fn(),
-    buscarVerificacaoVinculadaAoTelegram: jest.fn(),
-    criar: jest.fn(),
-    marcarVerificacaoComoVerificada: jest.fn(),
+    prepararCodigoTelegram: jest.fn(),
+    cancelarCodigoTelegram: jest.fn(),
   } as unknown as jest.Mocked<UsuariosRepository>;
   const configService = {
     getOrThrow: jest.fn(() => 'RadarPassagensBot'),
   } as unknown as ConfigService;
-  const sessaoService = {
-    criar: jest.fn(),
-  } as unknown as SessaoService;
-  const solicitadorContato = {
-    solicitarContato: jest.fn(),
-    enviarMensagem: jest.fn(),
-  };
+  const sessaoService = { criar: jest.fn() } as unknown as SessaoService;
+  const mensageiroTelegram = { enviarMensagem: jest.fn() };
+
+  const criarVerificacao = (
+    dados: Partial<VerificacaoTelefone> = {},
+  ): VerificacaoTelefone => ({
+    id: 'verificacao-1',
+    telefone: '+5561999999999',
+    finalidade: 'CADASTRO',
+    senhaHash: 'hash',
+    tokenInicio: 'token-inicio',
+    telegramChatId: null,
+    telegramUsuarioId: null,
+    codigoHash: null,
+    tentativasCodigo: 0,
+    codigoEnviadoEm: null,
+    verificadaEm: null,
+    consumidaEm: null,
+    expiraEm: new Date(Date.now() + 60_000),
+    criadoEm: new Date(),
+    ...dados,
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
-    usuariosRepository.vincularTelegramNaVerificacao.mockResolvedValue(true);
+    usuariosRepository.prepararCodigoTelegram.mockResolvedValue(true);
   });
 
   it('inicia um cadastro com link único do Telegram', async () => {
     usuariosRepository.buscarPorTelefone.mockResolvedValue(null);
     usuariosRepository.contarVerificacoesRecentes.mockResolvedValue(0);
-    usuariosRepository.criarVerificacao.mockImplementation((dados) => ({
-      id: 'verificacao-1',
-      ...dados,
-      senhaHash: dados.senhaHash ?? null,
-      telegramChatId: null,
-      telegramUsuarioId: null,
-      verificadaEm: null,
-      consumidaEm: null,
-      criadoEm: new Date(),
-    }));
+    usuariosRepository.criarVerificacao.mockResolvedValue(criarVerificacao());
     const useCase = new IniciarVerificacaoTelefoneUseCase(
       usuariosRepository,
       new LimiteAutenticacaoService(),
@@ -105,7 +108,7 @@ describe('Casos de uso de autenticação', () => {
       telefone: '+5561999999999',
       senhaHash: await argon2.hash('1234', { type: argon2.argon2id }),
       telegramChatId: '123456',
-      telefoneVerificadoEm: new Date(),
+      verificadoEm: new Date(),
       tentativasLoginFalhas: 4,
       bloqueadoAte: null,
     } satisfies Usuario;
@@ -125,26 +128,14 @@ describe('Casos de uso de autenticação', () => {
     );
   });
 
-  it('vincula o chat e solicita o contato após /start', async () => {
-    const verificacao = {
-      id: 'verificacao-1',
-      telefone: '+5561999999999',
-      finalidade: 'CADASTRO',
-      senhaHash: 'hash',
-      tokenInicio: 'token-inicio',
-      telegramChatId: null,
-      telegramUsuarioId: null,
-      verificadaEm: null,
-      consumidaEm: null,
-      expiraEm: new Date(Date.now() + 60_000),
-      criadoEm: new Date(),
-    } satisfies VerificacaoTelefone;
+  it('vincula o chat e envia um código após /start', async () => {
+    const verificacao = criarVerificacao();
     usuariosRepository.buscarVerificacaoPorTokenInicio.mockResolvedValue(
       verificacao,
     );
     const useCase = new ProcessarAtualizacaoTelegramUseCase(
       usuariosRepository,
-      solicitadorContato,
+      mensageiroTelegram,
     );
 
     await useCase.iniciar({
@@ -153,46 +144,85 @@ describe('Casos de uso de autenticação', () => {
       telegramUsuarioId: '654321',
     });
 
-    expect(
-      usuariosRepository.vincularTelegramNaVerificacao,
-    ).toHaveBeenCalledWith(verificacao.id, '123456', '654321');
-    expect(solicitadorContato.solicitarContato).toHaveBeenCalledWith('123456');
+    expect(usuariosRepository.prepararCodigoTelegram).toHaveBeenCalledWith(
+      expect.objectContaining({
+        verificacaoId: verificacao.id,
+        telegramChatId: '123456',
+        telegramUsuarioId: '654321',
+        codigoHash: expect.any(String),
+      }),
+    );
+    expect(mensageiroTelegram.enviarMensagem).toHaveBeenCalledWith(
+      '123456',
+      expect.stringMatching(/^Seu código de verificação é: \d{6}$/),
+    );
+  });
+
+  it('não reenvia o código antes de um minuto', async () => {
+    const verificacao = criarVerificacao({ codigoEnviadoEm: new Date() });
+    usuariosRepository.buscarVerificacaoPorTokenInicio.mockResolvedValue(
+      verificacao,
+    );
+    const useCase = new ProcessarAtualizacaoTelegramUseCase(
+      usuariosRepository,
+      mensageiroTelegram,
+    );
+
+    await useCase.iniciar({
+      tokenInicio: verificacao.tokenInicio,
+      chatId: '123456',
+      telegramUsuarioId: '654321',
+    });
+
+    expect(usuariosRepository.prepararCodigoTelegram).not.toHaveBeenCalled();
+    expect(mensageiroTelegram.enviarMensagem).toHaveBeenCalledWith(
+      '123456',
+      expect.stringContaining('recentemente'),
+    );
+  });
+
+  it('descarta o código se o Telegram não conseguir enviá-lo', async () => {
+    const verificacao = criarVerificacao();
+    usuariosRepository.buscarVerificacaoPorTokenInicio.mockResolvedValue(
+      verificacao,
+    );
+    mensageiroTelegram.enviarMensagem.mockRejectedValueOnce(
+      new Error('falha de rede'),
+    );
+    const useCase = new ProcessarAtualizacaoTelegramUseCase(
+      usuariosRepository,
+      mensageiroTelegram,
+    );
+
+    await expect(
+      useCase.iniciar({
+        tokenInicio: verificacao.tokenInicio,
+        chatId: '123456',
+        telegramUsuarioId: '654321',
+      }),
+    ).rejects.toThrow('falha de rede');
+
+    expect(usuariosRepository.cancelarCodigoTelegram).toHaveBeenCalledWith(
+      verificacao.id,
+      expect.any(String),
+    );
   });
 
   it('orienta o usuário quando recebe /start sem link de confirmação', async () => {
     const useCase = new ProcessarAtualizacaoTelegramUseCase(
       usuariosRepository,
-      solicitadorContato,
+      mensageiroTelegram,
     );
 
     await useCase.iniciar({ chatId: '123456', telegramUsuarioId: '654321' });
 
-    expect(solicitadorContato.enviarMensagem).toHaveBeenCalledWith(
+    expect(mensageiroTelegram.enviarMensagem).toHaveBeenCalledWith(
       '123456',
       expect.stringContaining('link de confirmação'),
     );
     expect(
       usuariosRepository.buscarVerificacaoPorTokenInicio,
     ).not.toHaveBeenCalled();
-  });
-
-  it('recusa contato compartilhado que pertence a outra conta do Telegram', async () => {
-    const useCase = new ProcessarAtualizacaoTelegramUseCase(
-      usuariosRepository,
-      solicitadorContato,
-    );
-
-    await useCase.confirmarContato({
-      telefone: '5561999999999',
-      chatId: '123456',
-      telegramUsuarioId: '654321',
-      contatoUsuarioId: 'outro-usuario',
-    });
-
-    expect(
-      usuariosRepository.buscarVerificacaoVinculadaAoTelegram,
-    ).not.toHaveBeenCalled();
-    expect(usuariosRepository.criar).not.toHaveBeenCalled();
   });
 
   it('mantém mensagem genérica para credenciais inexistentes', async () => {

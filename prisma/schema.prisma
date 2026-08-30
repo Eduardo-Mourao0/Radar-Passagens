@@ -31,7 +31,7 @@ model Usuario {
   telefone              String         @unique
   senhaHash             String
   telegramChatId        String         @unique
-  telefoneVerificadoEm  DateTime
+  verificadoEm          DateTime
   tentativasLoginFalhas Int            @default(0)
   bloqueadoAte          DateTime?
   criadoEm              DateTime       @default(now())
@@ -48,6 +48,9 @@ model VerificacaoTelefone {
   tokenInicio       String                        @unique
   telegramChatId    String?
   telegramUsuarioId String?
+  codigoHash        String?
+  tentativasCodigo  Int                           @default(0)
+  codigoEnviadoEm   DateTime?
   verificadaEm      DateTime?
   consumidaEm       DateTime?
   expiraEm          DateTime

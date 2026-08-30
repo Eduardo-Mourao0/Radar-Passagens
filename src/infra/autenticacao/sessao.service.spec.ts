@@ -13,7 +13,7 @@ describe('SessaoService', () => {
     telefone: '+5561999999999',
     senhaHash: 'hash',
     telegramChatId: '123456',
-    telefoneVerificadoEm: new Date(),
+    verificadoEm: new Date(),
     tentativasLoginFalhas: 0,
     bloqueadoAte: null,
   } satisfies Usuario;

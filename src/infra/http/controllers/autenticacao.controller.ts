@@ -160,7 +160,7 @@ export class AutenticacaoController {
 
     const chatId = String(mensagem.chat.id);
     const telegramUsuarioId = String(mensagem.from.id);
-    const inicio = mensagem.text?.match(/^\/start\s+([A-Za-z0-9_-]{43})$/);
+    const inicio = mensagem.text?.match(/^\/start(?:@\w+)?(?:\s+(\S+))?$/);
     if (inicio) {
       await this.processarAtualizacaoTelegram.iniciar({
         tokenInicio: inicio[1],

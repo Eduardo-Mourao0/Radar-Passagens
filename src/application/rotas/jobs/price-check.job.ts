@@ -70,7 +70,18 @@ export class PriceCheckJob {
       const rota = rotasPendentes.shift();
       if (!rota) return;
 
-      await this.verificarRota(rota, usuariosPorId.get(rota.usuarioId));
+      const usuario = usuariosPorId.get(rota.usuarioId);
+      if (!usuario) {
+        this.logger.warn(
+          JSON.stringify({
+            evento: 'usuario_da_rota_nao_encontrado',
+            rotaId: rota.id,
+            usuarioId: rota.usuarioId,
+          }),
+        );
+      }
+
+      await this.verificarRota(rota, usuario);
     }
   }
 

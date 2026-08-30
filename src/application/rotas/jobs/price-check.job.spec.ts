@@ -144,6 +144,38 @@ describe('PriceCheckJob', () => {
     warnLog.mockRestore();
   });
 
+  it('avisa quando não encontra o dono de uma rota ativa no lote', async () => {
+    const rotasRepository = {
+      desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
+      listarAtivas: jest.fn().mockResolvedValue([rota]),
+    };
+    const consultarPrecosVoo = {
+      consultarMenorPreco: jest.fn().mockResolvedValue(null),
+    };
+    const registrarHistoricoPreco = { execute: jest.fn() };
+    const repositorioSemUsuario = {
+      buscarPorIds: jest.fn().mockResolvedValue([]),
+    };
+    const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const job = new PriceCheckJob(
+      rotasRepository,
+      consultarPrecosVoo,
+      registrarHistoricoPreco,
+      repositorioSemUsuario,
+    );
+
+    await job.executar();
+
+    expect(warnLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'usuario_da_rota_nao_encontrado',
+        rotaId: rota.id,
+        usuarioId: rota.usuarioId,
+      }),
+    );
+    warnLog.mockRestore();
+  });
+
   it('desativa rotas cuja data de ida já passou antes de consultar preços', async () => {
     const rotasRepository = {
       desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(2),

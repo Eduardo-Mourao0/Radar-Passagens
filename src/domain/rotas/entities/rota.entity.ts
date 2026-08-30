@@ -205,7 +205,7 @@ export class AlertaPrecoEntity {
   static criar(dados: NovoAlertaPreco): NovoAlertaPreco {
     const precoAlvo = PrecoEntity.criar(dados.precoAlvo);
 
-    return { ...dados, precoAlvo };
+    return { rotaId: dados.rotaId, precoAlvo };
   }
 
   static deveDisparar(alerta: AlertaPreco, precoAtual: string): boolean {

@@ -47,7 +47,11 @@ describe('ConfigurarAlertaPrecoUseCase', () => {
     const useCase = modulo.get(ConfigurarAlertaPrecoUseCase);
 
     await expect(
-      useCase.execute({ rotaId: 'rota-1', precoAlvo: '1500.5' }),
+      useCase.execute({
+        rotaId: 'rota-1',
+        usuarioId: 'usuario-1',
+        precoAlvo: '1500.5',
+      }),
     ).resolves.toMatchObject({ precoAlvo: '1500.50' });
     expect(repositorio.salvarAlertaPreco).toHaveBeenCalledWith({
       rotaId: 'rota-1',

@@ -5,6 +5,9 @@ import type { ConsultarPrecosVoo } from '../ports/consultar-precos-voo.port';
 import { RegistrarHistoricoPrecoUseCase } from '../use-cases/registrar-historico-preco.use-case';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
+import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
+import type { UsuariosRepository } from '../../../domain/usuarios/repositories/usuarios.repository';
+import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
 
 /**
  * Orquestra as verificações periódicas; regras de negócio permanecem nos use cases.
@@ -20,6 +23,8 @@ export class PriceCheckJob {
     @Inject(CONSULTAR_PRECOS_VOO)
     private readonly consultarPrecosVoo: ConsultarPrecosVoo,
     private readonly registrarHistoricoPreco: RegistrarHistoricoPrecoUseCase,
+    @Inject(USUARIOS_REPOSITORY)
+    private readonly usuariosRepository: UsuariosRepository,
   ) {}
 
   @Cron(CronExpression.EVERY_6_HOURS)
@@ -39,6 +44,12 @@ export class PriceCheckJob {
     }
 
     const rotasPendentes = [...(await this.rotasRepository.listarAtivas())];
+    const usuarios = await this.usuariosRepository.buscarPorIds([
+      ...new Set(rotasPendentes.map((rota) => rota.usuarioId)),
+    ]);
+    const usuariosPorId = new Map(
+      usuarios.map((usuario) => [usuario.id, usuario]),
+    );
     const quantidadeDeTrabalhadores = Math.min(
       PriceCheckJob.CONCORRENCIA_MAXIMA,
       rotasPendentes.length,
@@ -46,24 +57,37 @@ export class PriceCheckJob {
 
     await Promise.all(
       Array.from({ length: quantidadeDeTrabalhadores }, () =>
-        this.processarRotasPendentes(rotasPendentes),
+        this.processarRotasPendentes(rotasPendentes, usuariosPorId),
       ),
     );
   }
 
   private async processarRotasPendentes(
     rotasPendentes: Awaited<ReturnType<RotasRepository['listarAtivas']>>,
+    usuariosPorId: ReadonlyMap<string, Usuario>,
   ): Promise<void> {
     while (rotasPendentes.length > 0) {
       const rota = rotasPendentes.shift();
       if (!rota) return;
 
-      await this.verificarRota(rota);
+      const usuario = usuariosPorId.get(rota.usuarioId);
+      if (!usuario) {
+        this.logger.warn(
+          JSON.stringify({
+            evento: 'usuario_da_rota_nao_encontrado',
+            rotaId: rota.id,
+            usuarioId: rota.usuarioId,
+          }),
+        );
+      }
+
+      await this.verificarRota(rota, usuario);
     }
   }
 
   private async verificarRota(
     rota: Awaited<ReturnType<RotasRepository['listarAtivas']>>[number],
+    usuario: Usuario | undefined,
   ): Promise<void> {
     try {
       const cotacao = await this.consultarPrecosVoo.consultarMenorPreco(rota);
@@ -78,10 +102,14 @@ export class PriceCheckJob {
         return;
       }
 
-      const resultado = await this.registrarHistoricoPreco.execute({
-        rotaId: rota.id,
-        ...cotacao,
-      });
+      const resultado = await this.registrarHistoricoPreco.execute(
+        {
+          rotaId: rota.id,
+          ...cotacao,
+        },
+        rota,
+        usuario,
+      );
 
       this.logger.log(
         JSON.stringify({

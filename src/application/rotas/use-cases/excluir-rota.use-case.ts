@@ -12,9 +12,12 @@ export class ExcluirRotaUseCase {
   ) {}
 
   async execute(comando: ExcluirRotaCommand): Promise<void> {
-    const rota = await this.rotasRepository.buscarPorId(comando.rotaId);
+    const rota = await this.rotasRepository.buscarPorId(
+      comando.rotaId,
+      comando.usuarioId,
+    );
     if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
 
-    await this.rotasRepository.excluir(rota.id);
+    await this.rotasRepository.excluir(rota.id, comando.usuarioId);
   }
 }

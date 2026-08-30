@@ -11,6 +11,7 @@ import { ReativarRotaUseCase } from './reativar-rota.use-case';
 describe('ReativarRotaUseCase', () => {
   const rota = {
     id: 'rota-1',
+    usuarioId: 'usuario-1',
     chaveMonitoramento: 'BSB:FOR:2026-12-05:2026-12-12',
     origem: 'BSB',
     destino: 'FOR',
@@ -53,16 +54,20 @@ describe('ReativarRotaUseCase', () => {
     repositorio.buscarPorId.mockResolvedValue(rota);
     repositorio.reativar.mockResolvedValue({ ...rota, ativa: true });
 
-    await expect(useCase.execute({ rotaId: rota.id })).resolves.toMatchObject({
+    await expect(
+      useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
+    ).resolves.toMatchObject({
       ativa: true,
     });
-    expect(repositorio.reativar).toHaveBeenCalledWith(rota.id);
+    expect(repositorio.reativar).toHaveBeenCalledWith(rota.id, rota.usuarioId);
   });
 
   it('não altera uma rota que já está ativa', async () => {
     repositorio.buscarPorId.mockResolvedValue({ ...rota, ativa: true });
 
-    await expect(useCase.execute({ rotaId: rota.id })).resolves.toMatchObject({
+    await expect(
+      useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
+    ).resolves.toMatchObject({
       ativa: true,
     });
     expect(repositorio.reativar).not.toHaveBeenCalled();
@@ -74,9 +79,9 @@ describe('ReativarRotaUseCase', () => {
       dataIda: new Date('2020-01-01'),
     });
 
-    await expect(useCase.execute({ rotaId: rota.id })).rejects.toBeInstanceOf(
-      RegraDeNegocioError,
-    );
+    await expect(
+      useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
+    ).rejects.toBeInstanceOf(RegraDeNegocioError);
     expect(repositorio.reativar).not.toHaveBeenCalled();
   });
 
@@ -84,7 +89,10 @@ describe('ReativarRotaUseCase', () => {
     repositorio.buscarPorId.mockResolvedValue(null);
 
     await expect(
-      useCase.execute({ rotaId: 'rota-inexistente' }),
+      useCase.execute({
+        rotaId: 'rota-inexistente',
+        usuarioId: rota.usuarioId,
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

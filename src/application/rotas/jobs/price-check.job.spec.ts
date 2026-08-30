@@ -3,6 +3,7 @@ import { PriceCheckJob } from './price-check.job';
 
 const rota = {
   id: 'rota-1',
+  usuarioId: 'usuario-1',
   chaveMonitoramento: 'GRU:REC:2026-09-10:SOMENTE_IDA',
   origem: 'GRU',
   destino: 'REC',
@@ -11,6 +12,12 @@ const rota = {
   ativa: true,
   criadoEm: new Date(2026, 0, 1),
 } as const;
+
+const usuariosRepository = {
+  buscarPorIds: jest
+    .fn()
+    .mockResolvedValue([{ id: 'usuario-1', telegramChatId: '123456' }]),
+};
 
 describe('PriceCheckJob', () => {
   it('continua a verificação após a falha de uma rota', async () => {
@@ -39,17 +46,23 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();
 
     expect(consultarPrecosVoo.consultarMenorPreco).toHaveBeenCalledTimes(2);
-    expect(registrarHistoricoPreco.execute).toHaveBeenCalledWith({
-      rotaId: 'rota-2',
-      preco: '350.00',
-      moeda: 'BRL',
-      companhia: 'Azul',
-    });
+    expect(usuariosRepository.buscarPorIds).toHaveBeenCalledWith(['usuario-1']);
+    expect(registrarHistoricoPreco.execute).toHaveBeenCalledWith(
+      {
+        rotaId: 'rota-2',
+        preco: '350.00',
+        moeda: 'BRL',
+        companhia: 'Azul',
+      },
+      expect.objectContaining({ id: 'rota-2' }),
+      expect.objectContaining({ id: 'usuario-1' }),
+    );
     expect(errorLog).toHaveBeenCalledTimes(1);
     expect(infoLog).toHaveBeenCalledTimes(1);
     errorLog.mockRestore();
@@ -89,6 +102,7 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();
@@ -113,6 +127,7 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();
@@ -129,6 +144,38 @@ describe('PriceCheckJob', () => {
     warnLog.mockRestore();
   });
 
+  it('avisa quando não encontra o dono de uma rota ativa no lote', async () => {
+    const rotasRepository = {
+      desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
+      listarAtivas: jest.fn().mockResolvedValue([rota]),
+    };
+    const consultarPrecosVoo = {
+      consultarMenorPreco: jest.fn().mockResolvedValue(null),
+    };
+    const registrarHistoricoPreco = { execute: jest.fn() };
+    const repositorioSemUsuario = {
+      buscarPorIds: jest.fn().mockResolvedValue([]),
+    };
+    const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const job = new PriceCheckJob(
+      rotasRepository,
+      consultarPrecosVoo,
+      registrarHistoricoPreco,
+      repositorioSemUsuario,
+    );
+
+    await job.executar();
+
+    expect(warnLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'usuario_da_rota_nao_encontrado',
+        rotaId: rota.id,
+        usuarioId: rota.usuarioId,
+      }),
+    );
+    warnLog.mockRestore();
+  });
+
   it('desativa rotas cuja data de ida já passou antes de consultar preços', async () => {
     const rotasRepository = {
       desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(2),
@@ -141,6 +188,7 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();
@@ -148,8 +196,12 @@ describe('PriceCheckJob', () => {
     expect(
       rotasRepository.desativarRotasComDataIdaPassada,
     ).toHaveBeenCalledWith(expect.any(Date));
-    const [inicioDeHoje] =
+    const chamada: unknown =
       rotasRepository.desativarRotasComDataIdaPassada.mock.calls[0];
+    if (!Array.isArray(chamada) || !(chamada[0] instanceof Date)) {
+      throw new Error('A data de referência não foi informada ao repositório.');
+    }
+    const inicioDeHoje = chamada[0];
     expect(inicioDeHoje).toEqual(
       new Date(
         inicioDeHoje.getFullYear(),

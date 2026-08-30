@@ -9,7 +9,7 @@ export class ListarRotasUseCase {
     private readonly rotasRepository: RotasRepository,
   ) {}
 
-  async execute() {
-    return this.rotasRepository.listar();
+  async execute(usuarioId: string) {
+    return this.rotasRepository.listar(usuarioId);
   }
 }

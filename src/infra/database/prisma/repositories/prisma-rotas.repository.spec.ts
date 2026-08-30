@@ -8,6 +8,7 @@ describe('PrismaRotasRepository', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'rota-1',
+            usuarioId: 'usuario-1',
             chaveMonitoramento: 'BSB:GRU:2026-12-10:SOMENTE_IDA',
             origem: 'BSB',
             destino: 'GRU',
@@ -26,7 +27,7 @@ describe('PrismaRotasRepository', () => {
     const prisma = prismaMock as unknown as PrismaService;
     const repositorio = new PrismaRotasRepository(prisma);
 
-    await expect(repositorio.listar()).resolves.toEqual([
+    await expect(repositorio.listar('usuario-1')).resolves.toEqual([
       expect.objectContaining({
         id: 'rota-1',
         alertaPreco: { precoAlvo: '1500.00', disparado: false },
@@ -35,6 +36,7 @@ describe('PrismaRotasRepository', () => {
     expect(prismaMock.rota.findMany).toHaveBeenCalledWith({
       orderBy: { criadoEm: 'desc' },
       include: { alertaPreco: true },
+      where: { usuarioId: 'usuario-1' },
     });
   });
 
@@ -47,9 +49,11 @@ describe('PrismaRotasRepository', () => {
     const prisma = prismaMock as unknown as PrismaService;
     const repositorio = new PrismaRotasRepository(prisma);
 
-    await expect(repositorio.excluir('rota-1')).resolves.toBeUndefined();
+    await expect(
+      repositorio.excluir('rota-1', 'usuario-1'),
+    ).resolves.toBeUndefined();
     expect(prismaMock.rota.deleteMany).toHaveBeenCalledWith({
-      where: { id: 'rota-1' },
+      where: { id: 'rota-1', usuarioId: 'usuario-1' },
     });
   });
 

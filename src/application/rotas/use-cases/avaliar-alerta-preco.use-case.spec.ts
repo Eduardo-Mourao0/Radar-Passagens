@@ -14,9 +14,18 @@ import {
   NotificadorAlertaPreco,
 } from '../ports/notificador-alerta-preco.port';
 import { AvaliarAlertaPrecoUseCase } from './avaliar-alerta-preco.use-case';
+import {
+  USUARIOS_REPOSITORY,
+  UsuariosRepository,
+} from '../../../domain/usuarios/repositories/usuarios.repository';
 
 describe('AvaliarAlertaPrecoUseCase', () => {
-  const rota = { id: 'rota-1', origem: 'BSB', destino: 'FOR' } as Rota;
+  const rota = {
+    id: 'rota-1',
+    usuarioId: 'usuario-1',
+    origem: 'BSB',
+    destino: 'FOR',
+  } as Rota;
   const historico = {
     id: 'historico-1',
     rotaId: 'rota-1',
@@ -44,6 +53,9 @@ describe('AvaliarAlertaPrecoUseCase', () => {
   const notificador: jest.Mocked<NotificadorAlertaPreco> = {
     enviar: jest.fn(),
   };
+  const usuariosRepository = {
+    buscarPorId: jest.fn(),
+  } as unknown as jest.Mocked<UsuariosRepository>;
   const alerta = {
     id: 'alerta-1',
     rotaId: 'rota-1',
@@ -58,11 +70,16 @@ describe('AvaliarAlertaPrecoUseCase', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     notificador.enviar.mockResolvedValue(true);
+    usuariosRepository.buscarPorId.mockResolvedValue({
+      id: 'usuario-1',
+      telegramChatId: '123456',
+    } as never);
     const modulo = await Test.createTestingModule({
       providers: [
         AvaliarAlertaPrecoUseCase,
         { provide: ROTAS_REPOSITORY, useValue: repositorio },
         { provide: NOTIFICADOR_ALERTA_PRECO, useValue: notificador },
+        { provide: USUARIOS_REPOSITORY, useValue: usuariosRepository },
       ],
     }).compile();
     useCase = modulo.get(AvaliarAlertaPrecoUseCase);
@@ -83,6 +100,7 @@ describe('AvaliarAlertaPrecoUseCase', () => {
     await useCase.execute(rota, historico);
 
     expect(notificador.enviar).toHaveBeenCalledWith({
+      telegramChatId: '123456',
       alerta,
       rota,
       historico,

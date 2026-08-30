@@ -9,7 +9,9 @@ datasource db {
 
 model Rota {
   id                 String           @id @default(uuid())
-  chaveMonitoramento String           @unique
+  usuarioId          String
+  usuario            Usuario          @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  chaveMonitoramento String
   origem             String
   destino            String
   dataIda            DateTime
@@ -19,7 +21,57 @@ model Rota {
   historicos         HistoricoPreco[]
   alertaPreco        AlertaPreco?
 
+  @@unique([usuarioId, chaveMonitoramento])
+  @@index([usuarioId, criadoEm(sort: Desc)])
   @@index([ativa])
+}
+
+model Usuario {
+  id                    String         @id @default(uuid())
+  telefone              String         @unique
+  senhaHash             String
+  telegramChatId        String         @unique
+  telefoneVerificadoEm  DateTime
+  tentativasLoginFalhas Int            @default(0)
+  bloqueadoAte          DateTime?
+  criadoEm              DateTime       @default(now())
+  atualizadoEm          DateTime       @updatedAt
+  rotas                 Rota[]
+  refreshTokens         RefreshToken[]
+}
+
+model VerificacaoTelefone {
+  id                String                        @id @default(uuid())
+  telefone          String
+  finalidade        FinalidadeVerificacaoTelefone
+  senhaHash         String?
+  tokenInicio       String                        @unique
+  telegramChatId    String?
+  telegramUsuarioId String?
+  verificadaEm      DateTime?
+  consumidaEm       DateTime?
+  expiraEm          DateTime
+  criadoEm          DateTime                      @default(now())
+
+  @@index([telefone, finalidade, criadoEm(sort: Desc)])
+  @@index([expiraEm])
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  usuarioId  String
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiraEm   DateTime
+  revogadoEm DateTime?
+  criadoEm   DateTime  @default(now())
+
+  @@index([usuarioId, expiraEm])
+}
+
+enum FinalidadeVerificacaoTelefone {
+  CADASTRO
+  RECUPERACAO
 }
 
 model HistoricoPreco {
@@ -36,11 +88,11 @@ model HistoricoPreco {
 }
 
 model AlertaPreco {
-  id         String   @id @default(uuid())
-  rotaId     String   @unique
-  rota       Rota     @relation(fields: [rotaId], references: [id], onDelete: Cascade)
-  precoAlvo Decimal  @db.Decimal(10, 2)
-  disparado Boolean  @default(false)
-  criadoEm  DateTime @default(now())
+  id           String   @id @default(uuid())
+  rotaId       String   @unique
+  rota         Rota     @relation(fields: [rotaId], references: [id], onDelete: Cascade)
+  precoAlvo    Decimal  @db.Decimal(10, 2)
+  disparado    Boolean  @default(false)
+  criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 }

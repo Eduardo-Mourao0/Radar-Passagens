@@ -14,7 +14,10 @@ export class ReativarRotaUseCase {
   ) {}
 
   async execute(comando: ReativarRotaCommand) {
-    const rota = await this.rotasRepository.buscarPorId(comando.rotaId);
+    const rota = await this.rotasRepository.buscarPorId(
+      comando.rotaId,
+      comando.usuarioId,
+    );
     if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
 
     if (RotaEntity.dataIdaJaPassou(rota.dataIda)) {
@@ -23,6 +26,6 @@ export class ReativarRotaUseCase {
 
     if (rota.ativa) return rota;
 
-    return this.rotasRepository.reativar(rota.id);
+    return this.rotasRepository.reativar(rota.id, comando.usuarioId);
   }
 }

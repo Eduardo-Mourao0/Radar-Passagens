@@ -19,9 +19,10 @@ import { IgnavService } from '../../infra/ignav/ignav.service';
 import { RotasController } from '../../infra/http/controllers/rotas.controller';
 import { NotificacoesModule } from '../../infra/notificacoes/notificacoes.module';
 import { TelegramNotificadorAlertaPrecoService } from '../../infra/notificacoes/telegram-notificador-alerta-preco.service';
+import { AutenticacaoModule } from './autenticacao.module';
 
 @Module({
-  imports: [IgnavModule, NotificacoesModule],
+  imports: [IgnavModule, NotificacoesModule, AutenticacaoModule],
   controllers: [RotasController],
   providers: [
     CriarRotaUseCase,

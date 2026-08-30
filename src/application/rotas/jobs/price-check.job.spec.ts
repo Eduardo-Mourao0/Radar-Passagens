@@ -3,6 +3,7 @@ import { PriceCheckJob } from './price-check.job';
 
 const rota = {
   id: 'rota-1',
+  usuarioId: 'usuario-1',
   chaveMonitoramento: 'GRU:REC:2026-09-10:SOMENTE_IDA',
   origem: 'GRU',
   destino: 'REC',
@@ -11,6 +12,12 @@ const rota = {
   ativa: true,
   criadoEm: new Date(2026, 0, 1),
 } as const;
+
+const usuariosRepository = {
+  buscarPorIds: jest
+    .fn()
+    .mockResolvedValue([{ id: 'usuario-1', telegramChatId: '123456' }]),
+};
 
 describe('PriceCheckJob', () => {
   it('continua a verificação após a falha de uma rota', async () => {
@@ -39,17 +46,23 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();
 
     expect(consultarPrecosVoo.consultarMenorPreco).toHaveBeenCalledTimes(2);
-    expect(registrarHistoricoPreco.execute).toHaveBeenCalledWith({
-      rotaId: 'rota-2',
-      preco: '350.00',
-      moeda: 'BRL',
-      companhia: 'Azul',
-    });
+    expect(usuariosRepository.buscarPorIds).toHaveBeenCalledWith(['usuario-1']);
+    expect(registrarHistoricoPreco.execute).toHaveBeenCalledWith(
+      {
+        rotaId: 'rota-2',
+        preco: '350.00',
+        moeda: 'BRL',
+        companhia: 'Azul',
+      },
+      expect.objectContaining({ id: 'rota-2' }),
+      expect.objectContaining({ id: 'usuario-1' }),
+    );
     expect(errorLog).toHaveBeenCalledTimes(1);
     expect(infoLog).toHaveBeenCalledTimes(1);
     errorLog.mockRestore();
@@ -89,6 +102,7 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();
@@ -113,6 +127,7 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();
@@ -141,6 +156,7 @@ describe('PriceCheckJob', () => {
       rotasRepository,
       consultarPrecosVoo,
       registrarHistoricoPreco,
+      usuariosRepository,
     );
 
     await job.executar();

@@ -4,6 +4,7 @@ import {
   VerificacaoTelefone as PrismaVerificacaoTelefone,
 } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import {
   FinalidadeVerificacaoTelefone,
   RefreshToken,
@@ -20,6 +21,15 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
   async buscarPorId(id: string): Promise<Usuario | null> {
     const usuario = await this.prisma.usuario.findUnique({ where: { id } });
     return usuario ? this.mapearUsuario(usuario) : null;
+  }
+
+  async buscarPorIds(ids: readonly string[]): Promise<Usuario[]> {
+    if (ids.length === 0) return [];
+
+    const usuarios = await this.prisma.usuario.findMany({
+      where: { id: { in: [...ids] } },
+    });
+    return usuarios.map((usuario) => this.mapearUsuario(usuario));
   }
 
   async buscarPorTelefone(telefone: string): Promise<Usuario | null> {
@@ -108,11 +118,70 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
     id: string,
     telegramChatId: string,
     telegramUsuarioId: string,
-  ): Promise<void> {
-    await this.prisma.verificacaoTelefone.update({
-      where: { id },
+  ): Promise<boolean> {
+    const resultado = await this.prisma.verificacaoTelefone.updateMany({
+      where: {
+        id,
+        telegramChatId: null,
+        telegramUsuarioId: null,
+        consumidaEm: null,
+        verificadaEm: null,
+        expiraEm: { gt: new Date() },
+      },
       data: { telegramChatId, telegramUsuarioId },
     });
+    return resultado.count === 1;
+  }
+
+  async finalizarVerificacaoTelegram(dados: {
+    verificacaoId: string;
+    telefone: string;
+    chatId: string;
+    telegramUsuarioId: string;
+    quando: Date;
+  }): Promise<'VERIFICADA' | 'INDISPONIVEL' | 'TELEFONE_JA_CADASTRADO'> {
+    try {
+      return await this.prisma.$transaction(async (transacao) => {
+        const verificacao = await transacao.verificacaoTelefone.findFirst({
+          where: {
+            id: dados.verificacaoId,
+            telefone: dados.telefone,
+            telegramChatId: dados.chatId,
+            telegramUsuarioId: dados.telegramUsuarioId,
+            consumidaEm: null,
+            verificadaEm: null,
+            expiraEm: { gt: dados.quando },
+          },
+        });
+        if (!verificacao) return 'INDISPONIVEL';
+
+        if (verificacao.finalidade === 'CADASTRO') {
+          if (!verificacao.senhaHash) return 'INDISPONIVEL';
+          await transacao.usuario.create({
+            data: {
+              telefone: verificacao.telefone,
+              senhaHash: verificacao.senhaHash,
+              telegramChatId: dados.chatId,
+              telefoneVerificadoEm: dados.quando,
+            },
+          });
+        }
+
+        await transacao.verificacaoTelefone.update({
+          where: { id: verificacao.id },
+          data: { verificadaEm: dados.quando },
+        });
+        return 'VERIFICADA';
+      });
+    } catch (erro: unknown) {
+      if (
+        erro instanceof Prisma.PrismaClientKnownRequestError &&
+        erro.code === 'P2002'
+      ) {
+        return 'TELEFONE_JA_CADASTRADO';
+      }
+      throw erro;
+    }
   }
 
   async marcarVerificacaoComoVerificada(
@@ -160,6 +229,14 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
       where: { id },
     });
     return refreshToken ? this.mapearRefreshToken(refreshToken) : null;
+  }
+
+  async consumirRefreshToken(id: string, quando: Date): Promise<boolean> {
+    const resultado = await this.prisma.refreshToken.updateMany({
+      where: { id, revogadoEm: null, expiraEm: { gt: quando } },
+      data: { revogadoEm: quando },
+    });
+    return resultado.count === 1;
   }
 
   async revogarRefreshToken(id: string, quando: Date): Promise<void> {

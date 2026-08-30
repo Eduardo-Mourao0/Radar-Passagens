@@ -9,6 +9,7 @@ export const USUARIOS_REPOSITORY = Symbol('USUARIOS_REPOSITORY');
 
 export interface UsuariosRepository {
   buscarPorId(id: string): Promise<Usuario | null>;
+  buscarPorIds(ids: readonly string[]): Promise<Usuario[]>;
   buscarPorTelefone(telefone: string): Promise<Usuario | null>;
   criar(dados: {
     telefone: string;
@@ -41,7 +42,14 @@ export interface UsuariosRepository {
     id: string,
     telegramChatId: string,
     telegramUsuarioId: string,
-  ): Promise<void>;
+  ): Promise<boolean>;
+  finalizarVerificacaoTelegram(dados: {
+    verificacaoId: string;
+    telefone: string;
+    chatId: string;
+    telegramUsuarioId: string;
+    quando: Date;
+  }): Promise<'VERIFICADA' | 'INDISPONIVEL' | 'TELEFONE_JA_CADASTRADO'>;
   marcarVerificacaoComoVerificada(id: string, quando: Date): Promise<void>;
   consumirVerificacao(id: string, quando: Date): Promise<void>;
   contarVerificacoesRecentes(
@@ -55,6 +63,7 @@ export interface UsuariosRepository {
     expiraEm: Date;
   }): Promise<RefreshToken>;
   buscarRefreshTokenPorId(id: string): Promise<RefreshToken | null>;
+  consumirRefreshToken(id: string, quando: Date): Promise<boolean>;
   revogarRefreshToken(id: string, quando: Date): Promise<void>;
   revogarRefreshTokensDoUsuario(id: string, quando: Date): Promise<void>;
 }

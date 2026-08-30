@@ -1,7 +1,13 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import * as argon2 from 'argon2';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { z } from 'zod';
 import type { Usuario } from '../../domain/usuarios/entities/usuario.entity';
 import { USUARIOS_REPOSITORY } from '../../domain/usuarios/repositories/usuarios.repository';
 import type { UsuariosRepository } from '../../domain/usuarios/repositories/usuarios.repository';
@@ -26,6 +32,8 @@ export type SessaoCriada = Readonly<{
 @Injectable()
 export class SessaoService {
   private static readonly DIAS_REFRESH = 30;
+  private static readonly UUID_SCHEMA = z.uuid();
+  private readonly logger = new Logger(SessaoService.name);
 
   constructor(
     private readonly configService: ConfigService,
@@ -59,12 +67,19 @@ export class SessaoService {
     const [id, segredo] = refreshToken.split('.', 2);
     if (!id || !segredo) throw new UnauthorizedException();
     const refresh = await this.usuariosRepository.buscarRefreshTokenPorId(id);
-    if (
-      !refresh ||
-      refresh.revogadoEm ||
-      refresh.expiraEm <= new Date() ||
-      !(await argon2.verify(refresh.tokenHash, segredo))
-    ) {
+    const agora = new Date();
+    if (!refresh || refresh.expiraEm <= agora)
+      throw new UnauthorizedException();
+
+    const segredoValido = await argon2.verify(refresh.tokenHash, segredo);
+    if (!segredoValido) throw new UnauthorizedException();
+
+    if (refresh.revogadoEm) {
+      await this.usuariosRepository.revogarRefreshTokensDoUsuario(
+        refresh.usuarioId,
+        agora,
+      );
+      this.registrarReutilizacao(refresh.usuarioId, refresh.id);
       throw new UnauthorizedException();
     }
     const usuario = await this.usuariosRepository.buscarPorId(
@@ -72,7 +87,19 @@ export class SessaoService {
     );
     if (!usuario) throw new UnauthorizedException();
 
-    await this.usuariosRepository.revogarRefreshToken(refresh.id, new Date());
+    const consumido = await this.usuariosRepository.consumirRefreshToken(
+      refresh.id,
+      agora,
+    );
+    if (!consumido) {
+      await this.usuariosRepository.revogarRefreshTokensDoUsuario(
+        refresh.usuarioId,
+        agora,
+      );
+      this.registrarReutilizacao(refresh.usuarioId, refresh.id);
+      throw new UnauthorizedException();
+    }
+
     return this.criar(usuario);
   }
 
@@ -165,10 +192,24 @@ export class SessaoService {
     const candidato = payload as Record<string, unknown>;
     return (
       typeof candidato.sub === 'string' &&
+      SessaoService.UUID_SCHEMA.safeParse(candidato.sub).success &&
       typeof candidato.exp === 'number' &&
       (candidato.tipo === 'acesso' ||
         (candidato.tipo === 'redefinicao-pin' &&
           typeof candidato.verificacaoId === 'string'))
+    );
+  }
+
+  private registrarReutilizacao(
+    usuarioId: string,
+    refreshTokenId: string,
+  ): void {
+    this.logger.warn(
+      JSON.stringify({
+        evento: 'reutilizacao_refresh_token_detectada',
+        usuarioId,
+        refreshTokenId,
+      }),
     );
   }
 }

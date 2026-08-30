@@ -39,12 +39,15 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
     const useCase = module.get(RegistrarHistoricoPrecoUseCase);
 
     await expect(
-      useCase.execute({
-        rotaId: 'rota-1',
-        preco: '100.00',
-        moeda: 'BRL',
-        companhia: 'LATAM',
-      }),
+      useCase.execute(
+        {
+          rotaId: 'rota-1',
+          preco: '100.00',
+          moeda: 'BRL',
+          companhia: 'LATAM',
+        },
+        { id: 'rota-1', usuarioId: 'usuario-1' } as never,
+      ),
     ).resolves.toEqual({ registrado: false });
     expect(repositorio.registrarHistoricoSeDiferente).toHaveBeenCalledWith({
       rotaId: 'rota-1',
@@ -62,12 +65,15 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       coletadoEm: new Date(),
     });
     await expect(
-      useCase.execute({
-        rotaId: 'rota-1',
-        preco: '99.90',
-        moeda: 'BRL',
-        companhia: 'LATAM',
-      }),
+      useCase.execute(
+        {
+          rotaId: 'rota-1',
+          preco: '99.90',
+          moeda: 'BRL',
+          companhia: 'LATAM',
+        },
+        { id: 'rota-1', usuarioId: 'usuario-1' } as never,
+      ),
     ).resolves.toMatchObject({ registrado: true });
     expect(avaliarAlertaPrecoUseCase.execute).toHaveBeenCalledTimes(1);
   });

@@ -10,6 +10,7 @@ import { NOTIFICADOR_ALERTA_PRECO } from '../ports/notificador-alerta-preco.port
 import type { NotificadorAlertaPreco } from '../ports/notificador-alerta-preco.port';
 import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { UsuariosRepository } from '../../../domain/usuarios/repositories/usuarios.repository';
+import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
 
 @Injectable()
 export class AvaliarAlertaPrecoUseCase {
@@ -21,7 +22,11 @@ export class AvaliarAlertaPrecoUseCase {
     private readonly usuariosRepository: UsuariosRepository,
   ) {}
 
-  async execute(rota: Rota, historico: HistoricoPreco): Promise<void> {
+  async execute(
+    rota: Rota,
+    historico: HistoricoPreco,
+    usuarioDoContexto?: Usuario,
+  ): Promise<void> {
     const alerta = await this.rotasRepository.buscarAlertaPreco(rota.id);
     if (!alerta) return;
 
@@ -33,7 +38,9 @@ export class AvaliarAlertaPrecoUseCase {
 
     if (!AlertaPrecoEntity.deveDisparar(alerta, historico.preco)) return;
 
-    const usuario = await this.usuariosRepository.buscarPorId(rota.usuarioId);
+    const usuario =
+      usuarioDoContexto ??
+      (await this.usuariosRepository.buscarPorId(rota.usuarioId));
     if (!usuario) return;
 
     const notificacaoEnviada = await this.notificador.enviar({

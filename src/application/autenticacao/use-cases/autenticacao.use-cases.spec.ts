@@ -22,6 +22,7 @@ describe('Casos de uso de autenticação', () => {
     atualizarTentativasLogin: jest.fn(),
     buscarVerificacaoPorTokenInicio: jest.fn(),
     vincularTelegramNaVerificacao: jest.fn(),
+    finalizarVerificacaoTelegram: jest.fn(),
     buscarVerificacaoVinculadaAoTelegram: jest.fn(),
     criar: jest.fn(),
     marcarVerificacaoComoVerificada: jest.fn(),
@@ -34,7 +35,10 @@ describe('Casos de uso de autenticação', () => {
   } as unknown as SessaoService;
   const solicitadorContato = { solicitarContato: jest.fn() };
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    usuariosRepository.vincularTelegramNaVerificacao.mockResolvedValue(true);
+  });
 
   it('inicia um cadastro com link único do Telegram', async () => {
     usuariosRepository.buscarPorTelefone.mockResolvedValue(null);

@@ -95,9 +95,9 @@ export class PrismaRotasRepository implements RotasRepository {
     return resultado.count;
   }
 
-  async buscarPorId(id: string, usuarioId?: string): Promise<Rota | null> {
-    const rota = await this.prisma.rota.findUnique({
-      where: { id, ...(usuarioId ? { usuarioId } : {}) },
+  async buscarPorId(id: string, usuarioId: string): Promise<Rota | null> {
+    const rota = await this.prisma.rota.findFirst({
+      where: { id, usuarioId },
     });
 
     return rota ? this.mapearRota(rota) : null;
@@ -105,12 +105,12 @@ export class PrismaRotasRepository implements RotasRepository {
 
   async listarHistorico(
     rotaId: string,
-    usuarioId?: string,
+    usuarioId: string,
   ): Promise<HistoricoPreco[]> {
     const historicos = await this.prisma.historicoPreco.findMany({
       where: {
         rotaId,
-        ...(usuarioId ? { rota: { usuarioId } } : {}),
+        rota: { usuarioId },
       },
       orderBy: { coletadoEm: 'desc' },
     });

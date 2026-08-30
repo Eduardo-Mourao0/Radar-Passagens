@@ -147,7 +147,9 @@ export class RotasController {
   }
 
   private obterUsuarioId(request: Request): string {
-    if (!request.usuario) throw new UnauthorizedException();
+    if (!request.usuario?.id || typeof request.usuario.id !== 'string') {
+      throw new UnauthorizedException();
+    }
     return request.usuario.id;
   }
 }

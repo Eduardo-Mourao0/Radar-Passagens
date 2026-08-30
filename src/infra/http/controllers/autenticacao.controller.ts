@@ -38,9 +38,9 @@ import type {
 type AtualizacaoTelegram = {
   message?: {
     text?: string;
-    chat?: { id?: number | string; type?: string };
-    from?: { id?: number | string };
-    contact?: { phone_number?: string; user_id?: number | string };
+    chat?: { id?: number; type?: string };
+    from?: { id?: number };
+    contact?: { phone_number?: string; user_id?: number };
   };
 };
 
@@ -152,15 +152,15 @@ export class AutenticacaoController {
     if (
       !mensagem ||
       mensagem.chat?.type !== 'private' ||
-      mensagem.chat.id === undefined ||
-      mensagem.from?.id === undefined
+      !this.eIdTelegramValido(mensagem.chat.id) ||
+      !this.eIdTelegramValido(mensagem.from?.id)
     ) {
       return;
     }
 
     const chatId = String(mensagem.chat.id);
     const telegramUsuarioId = String(mensagem.from.id);
-    const inicio = mensagem.text?.match(/^\/start\s+([A-Za-z0-9_-]{20,})$/);
+    const inicio = mensagem.text?.match(/^\/start\s+([A-Za-z0-9_-]{43})$/);
     if (inicio) {
       await this.processarAtualizacaoTelegram.iniciar({
         tokenInicio: inicio[1],
@@ -205,6 +205,10 @@ export class AutenticacaoController {
     if (typeof encaminhado === 'string')
       return encaminhado.split(',')[0].trim();
     return request.ip ?? 'desconhecido';
+  }
+
+  private eIdTelegramValido(id: unknown): id is number {
+    return typeof id === 'number' && Number.isSafeInteger(id) && id > 0;
   }
 
   private obterCookieRefresh(request: Request): string {

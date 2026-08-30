@@ -22,11 +22,8 @@ export interface RotasRepository {
   listar(usuarioId: string): Promise<RotaComAlerta[]>;
   listarAtivas(): Promise<Rota[]>;
   desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number>;
-  buscarPorId(id: string, usuarioId?: string): Promise<Rota | null>;
-  listarHistorico(
-    rotaId: string,
-    usuarioId?: string,
-  ): Promise<HistoricoPreco[]>;
+  buscarPorId(id: string, usuarioId: string): Promise<Rota | null>;
+  listarHistorico(rotaId: string, usuarioId: string): Promise<HistoricoPreco[]>;
   buscarAlertaPreco(rotaId: string): Promise<AlertaPreco | null>;
   salvarAlertaPreco(dados: NovoAlertaPreco): Promise<AlertaPreco>;
   atualizarAlertaDisparado(id: string, disparado: boolean): Promise<void>;

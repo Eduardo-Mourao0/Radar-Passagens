@@ -1,6 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
-import { HistoricoPrecoEntity } from '../../../domain/rotas/entities/rota.entity';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  HistoricoPrecoEntity,
+  Rota,
+} from '../../../domain/rotas/entities/rota.entity';
+import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
 import { RegistrarHistoricoPrecoCommand } from '../commands/registrar-historico-preco.command';
@@ -13,10 +16,11 @@ export class RegistrarHistoricoPrecoUseCase {
     private readonly avaliarAlertaPrecoUseCase: AvaliarAlertaPrecoUseCase,
   ) {}
 
-  async execute(comando: RegistrarHistoricoPrecoCommand) {
-    const rota = await this.rotasRepository.buscarPorId(comando.rotaId);
-    if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
-
+  async execute(
+    comando: RegistrarHistoricoPrecoCommand,
+    rota: Rota,
+    usuario?: Usuario,
+  ) {
     const novoHistorico = HistoricoPrecoEntity.criar(comando);
     const historico =
       await this.rotasRepository.registrarHistoricoSeDiferente(novoHistorico);
@@ -25,7 +29,7 @@ export class RegistrarHistoricoPrecoUseCase {
       return { registrado: false };
     }
 
-    await this.avaliarAlertaPrecoUseCase.execute(rota, historico);
+    await this.avaliarAlertaPrecoUseCase.execute(rota, historico, usuario);
 
     return { registrado: true, historico };
   }

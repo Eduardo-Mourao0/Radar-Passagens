@@ -42,12 +42,13 @@ export class ProcessarAtualizacaoTelegramUseCase {
       return;
     }
 
-    await this.usuariosRepository.vincularTelegramNaVerificacao(
-      verificacao.id,
-      chatId,
-      telegramUsuarioId,
-    );
-    await this.solicitadorContato.solicitarContato(chatId);
+    const vinculada =
+      await this.usuariosRepository.vincularTelegramNaVerificacao(
+        verificacao.id,
+        chatId,
+        telegramUsuarioId,
+      );
+    if (vinculada) await this.solicitadorContato.solicitarContato(chatId);
   }
 
   async confirmarContato({
@@ -79,24 +80,16 @@ export class ProcessarAtualizacaoTelegramUseCase {
       throw new ConflictException(MENSAGENS_ERRO.telefoneTelegramDivergente);
     }
 
-    if (verificacao.finalidade === 'CADASTRO') {
-      const existente = await this.usuariosRepository.buscarPorTelefone(
-        verificacao.telefone,
-      );
-      if (existente)
-        throw new ConflictException(MENSAGENS_ERRO.telefoneJaCadastrado);
-      if (!verificacao.senhaHash) return;
-      await this.usuariosRepository.criar({
-        telefone: verificacao.telefone,
-        senhaHash: verificacao.senhaHash,
-        telegramChatId: chatId,
-        telefoneVerificadoEm: new Date(),
+    const resultado =
+      await this.usuariosRepository.finalizarVerificacaoTelegram({
+        verificacaoId: verificacao.id,
+        telefone: telefoneNormalizado,
+        chatId,
+        telegramUsuarioId,
+        quando: new Date(),
       });
+    if (resultado === 'TELEFONE_JA_CADASTRADO') {
+      throw new ConflictException(MENSAGENS_ERRO.telefoneJaCadastrado);
     }
-
-    await this.usuariosRepository.marcarVerificacaoComoVerificada(
-      verificacao.id,
-      new Date(),
-    );
   }
 }

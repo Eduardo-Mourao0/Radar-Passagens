@@ -10,6 +10,8 @@ import { SessaoService } from '../../../infra/autenticacao/sessao.service';
 export class AutenticarUsuarioUseCase {
   private static readonly MAXIMO_TENTATIVAS = 5;
   private static readonly BLOQUEIO_MS = 15 * 60 * 1000;
+  private static readonly HASH_PIN_INEXISTENTE =
+    '$argon2id$v=19$m=65536,t=3,p=4$73uNCYsFiap1wPEApMJ9zw$A8YltJm4PaKuOGXX0ep01TcaGZbhPAXyqkiYkVMV1xM';
 
   constructor(
     @Inject(USUARIOS_REPOSITORY)
@@ -21,8 +23,10 @@ export class AutenticarUsuarioUseCase {
     const telefone = UsuarioEntity.normalizarTelefone(telefoneInformado);
     UsuarioEntity.validarPin(pin);
     const usuario = await this.usuariosRepository.buscarPorTelefone(telefone);
-    if (!usuario)
+    if (!usuario) {
+      await argon2.verify(AutenticarUsuarioUseCase.HASH_PIN_INEXISTENTE, pin);
       throw new UnauthorizedException(MENSAGENS_ERRO.credenciaisInvalidas);
+    }
 
     if (UsuarioEntity.estaBloqueado(usuario)) {
       throw new UnauthorizedException(

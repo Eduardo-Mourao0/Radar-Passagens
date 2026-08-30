@@ -10,6 +10,7 @@ import { ExcluirRotaUseCase } from './excluir-rota.use-case';
 describe('ExcluirRotaUseCase', () => {
   const rota = {
     id: 'rota-1',
+    usuarioId: 'usuario-1',
     chaveMonitoramento: 'BSB:FOR:2026-12-05:2026-12-12',
     origem: 'BSB',
     destino: 'FOR',
@@ -52,15 +53,20 @@ describe('ExcluirRotaUseCase', () => {
     repositorio.buscarPorId.mockResolvedValue(rota);
     repositorio.excluir.mockResolvedValue(undefined);
 
-    await expect(useCase.execute({ rotaId: rota.id })).resolves.toBeUndefined();
-    expect(repositorio.excluir).toHaveBeenCalledWith(rota.id);
+    await expect(
+      useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
+    ).resolves.toBeUndefined();
+    expect(repositorio.excluir).toHaveBeenCalledWith(rota.id, rota.usuarioId);
   });
 
   it('informa quando a rota nao existe', async () => {
     repositorio.buscarPorId.mockResolvedValue(null);
 
     await expect(
-      useCase.execute({ rotaId: 'rota-inexistente' }),
+      useCase.execute({
+        rotaId: 'rota-inexistente',
+        usuarioId: rota.usuarioId,
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(repositorio.excluir).not.toHaveBeenCalled();
   });

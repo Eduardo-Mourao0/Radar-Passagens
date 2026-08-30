@@ -12,7 +12,10 @@ export class ConfigurarAlertaPrecoUseCase {
   ) {}
 
   async execute(comando: ConfigurarAlertaPrecoCommand) {
-    const rota = await this.rotasRepository.buscarPorId(comando.rotaId);
+    const rota = await this.rotasRepository.buscarPorId(
+      comando.rotaId,
+      comando.usuarioId,
+    );
     if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
 
     const alerta = AlertaPrecoEntity.criar(comando);

@@ -13,15 +13,22 @@ export class CriarRotaUseCase {
   ) {}
 
   async execute(comando: CriarRotaCommand) {
-    const novaRota = RotaEntity.criarNova(comando);
+    const novaRota = {
+      ...RotaEntity.criarNova(comando),
+      usuarioId: comando.usuarioId,
+    };
 
     const rotaExistente = await this.rotasRepository.buscarPorChave(
+      comando.usuarioId,
       novaRota.chaveMonitoramento,
     );
 
     if (rotaExistente) {
       if (!rotaExistente.ativa) {
-        return this.rotasRepository.reativar(rotaExistente.id);
+        return this.rotasRepository.reativar(
+          rotaExistente.id,
+          comando.usuarioId,
+        );
       }
 
       throw new ConflictException(MENSAGENS_ERRO.rotaDuplicada);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RegraDeNegocioError } from '../../../domain/errors/regra-de-negocio.error';
@@ -17,6 +18,7 @@ describe('Casos de uso de rotas', () => {
 
   const rota = {
     id: 'rota-1',
+    usuarioId: 'usuario-1',
     chaveMonitoramento: 'BSB:GRU:2026-12-10:2026-12-20',
     origem: 'BSB',
     destino: 'GRU',
@@ -63,6 +65,7 @@ describe('Casos de uso de rotas', () => {
 
     await expect(
       criarRotaUseCase.execute({
+        usuarioId: rota.usuarioId,
         origem: 'BSB',
         destino: 'GRU',
         dataIda: '2026-12-10',
@@ -71,6 +74,7 @@ describe('Casos de uso de rotas', () => {
     ).resolves.toEqual(rota);
     expect(repositorio.criar).toHaveBeenCalledWith({
       chaveMonitoramento: 'BSB:GRU:2026-12-10:2026-12-20',
+      usuarioId: rota.usuarioId,
       origem: 'BSB',
       destino: 'GRU',
       dataIda: new Date('2026-12-10T00:00:00'),
@@ -83,6 +87,7 @@ describe('Casos de uso de rotas', () => {
 
     await expect(
       criarRotaUseCase.execute({
+        usuarioId: rota.usuarioId,
         origem: 'BSB',
         destino: 'GRU',
         dataIda: '2026-12-10',
@@ -94,6 +99,7 @@ describe('Casos de uso de rotas', () => {
   it('aplica as regras de datas e aeroportos mesmo fora do controller', async () => {
     await expect(
       criarRotaUseCase.execute({
+        usuarioId: rota.usuarioId,
         origem: 'BSB',
         destino: 'BSB',
         dataIda: '2000-01-01',
@@ -109,13 +115,17 @@ describe('Casos de uso de rotas', () => {
 
     await expect(
       criarRotaUseCase.execute({
+        usuarioId: rota.usuarioId,
         origem: 'BSB',
         destino: 'GRU',
         dataIda: '2026-12-10',
         dataVolta: '2026-12-20',
       }),
     ).resolves.toEqual(rota);
-    expect(repositorio.reativar).toHaveBeenCalledWith(rotaInativa.id);
+    expect(repositorio.reativar).toHaveBeenCalledWith(
+      rotaInativa.id,
+      rota.usuarioId,
+    );
     expect(repositorio.criar).not.toHaveBeenCalled();
   });
 
@@ -126,7 +136,7 @@ describe('Casos de uso de rotas', () => {
     };
     repositorio.listar.mockResolvedValue([rotaComAlerta]);
 
-    await expect(listarRotasUseCase.execute()).resolves.toEqual([
+    await expect(listarRotasUseCase.execute(rota.usuarioId)).resolves.toEqual([
       rotaComAlerta,
     ]);
   });
@@ -143,16 +153,16 @@ describe('Casos de uso de rotas', () => {
     repositorio.buscarPorId.mockResolvedValue(rota);
     repositorio.listarHistorico.mockResolvedValue([historico]);
 
-    await expect(listarHistoricoRotaUseCase.execute(rota.id)).resolves.toEqual([
-      historico,
-    ]);
+    await expect(
+      listarHistoricoRotaUseCase.execute(rota.id, rota.usuarioId),
+    ).resolves.toEqual([historico]);
   });
 
   it('rejeita a consulta de histórico de uma rota inexistente', async () => {
     repositorio.buscarPorId.mockResolvedValue(null);
 
     await expect(
-      listarHistoricoRotaUseCase.execute('rota-inexistente'),
+      listarHistoricoRotaUseCase.execute('rota-inexistente', rota.usuarioId),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(repositorio.listarHistorico).not.toHaveBeenCalled();
   });

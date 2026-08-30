@@ -10,6 +10,7 @@ import { DesativarRotaUseCase } from './desativar-rota.use-case';
 describe('DesativarRotaUseCase', () => {
   const rota = {
     id: 'rota-1',
+    usuarioId: 'usuario-1',
     chaveMonitoramento: 'BSB:FOR:2026-12-05:2026-12-12',
     origem: 'BSB',
     destino: 'FOR',
@@ -52,16 +53,20 @@ describe('DesativarRotaUseCase', () => {
     repositorio.buscarPorId.mockResolvedValue(rota);
     repositorio.desativar.mockResolvedValue({ ...rota, ativa: false });
 
-    await expect(useCase.execute({ rotaId: rota.id })).resolves.toMatchObject({
+    await expect(
+      useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
+    ).resolves.toMatchObject({
       ativa: false,
     });
-    expect(repositorio.desativar).toHaveBeenCalledWith(rota.id);
+    expect(repositorio.desativar).toHaveBeenCalledWith(rota.id, rota.usuarioId);
   });
 
   it('não altera uma rota que já está inativa', async () => {
     repositorio.buscarPorId.mockResolvedValue({ ...rota, ativa: false });
 
-    await expect(useCase.execute({ rotaId: rota.id })).resolves.toMatchObject({
+    await expect(
+      useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
+    ).resolves.toMatchObject({
       ativa: false,
     });
     expect(repositorio.desativar).not.toHaveBeenCalled();
@@ -71,7 +76,10 @@ describe('DesativarRotaUseCase', () => {
     repositorio.buscarPorId.mockResolvedValue(null);
 
     await expect(
-      useCase.execute({ rotaId: 'rota-inexistente' }),
+      useCase.execute({
+        rotaId: 'rota-inexistente',
+        usuarioId: rota.usuarioId,
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

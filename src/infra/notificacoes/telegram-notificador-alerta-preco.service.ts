@@ -52,7 +52,8 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
 
   async enviar(notificacao: NotificacaoAlertaPreco): Promise<boolean> {
     try {
-      const { token, chatId } = this.obterConfiguracao();
+      const token = this.obterToken();
+      const chatId = chatIdSchema.parse(notificacao.telegramChatId);
       const urlEnvio = `https://api.telegram.org/bot${token}/sendMessage`;
       const resposta = await firstValueFrom(
         this.httpService
@@ -127,14 +128,9 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
     return { tipo: 'rede' };
   }
 
-  private obterConfiguracao(): { token: string; chatId: string } {
+  private obterToken(): string {
     try {
-      return {
-        token: this.configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN'),
-        chatId: chatIdSchema.parse(
-          this.configService.getOrThrow<string>('TELEGRAM_CHAT_ID'),
-        ),
-      };
+      return this.configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
     } catch {
       throw new ConfiguracaoTelegramInvalidaError();
     }

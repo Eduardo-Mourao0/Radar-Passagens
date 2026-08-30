@@ -1,5 +1,3 @@
-import { ForbiddenException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
@@ -11,6 +9,8 @@ import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-
 import { ReativarRotaUseCase } from '../../../application/rotas/use-cases/reativar-rota.use-case';
 import { ObterLinksCompraRotaUseCase } from '../../../application/rotas/use-cases/obter-links-compra-rota.use-case';
 import { RotasController } from './rotas.controller';
+import { AutenticacaoGuard } from '../guards/autenticacao.guard';
+import { SessaoService } from '../../autenticacao/sessao.service';
 
 describe('RotasController', () => {
   const criarRotaUseCase = { execute: jest.fn() };
@@ -22,14 +22,13 @@ describe('RotasController', () => {
   const listarHistoricoRotaUseCase = { execute: jest.fn() };
   const obterLinksCompraRotaUseCase = { execute: jest.fn() };
   const priceCheckJob = { executar: jest.fn() };
-  const configService = { get: jest.fn() };
+  const autenticacaoGuard = { canActivate: jest.fn(() => true) };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('executa a verificação manual fora de produção', async () => {
-    configService.get.mockReturnValue('development');
     priceCheckJob.executar.mockResolvedValue(undefined);
     const modulo = await Test.createTestingModule({
       controllers: [RotasController],
@@ -52,7 +51,8 @@ describe('RotasController', () => {
           useValue: obterLinksCompraRotaUseCase,
         },
         { provide: PriceCheckJob, useValue: priceCheckJob },
-        { provide: ConfigService, useValue: configService },
+        { provide: AutenticacaoGuard, useValue: autenticacaoGuard },
+        { provide: SessaoService, useValue: { validarAccessToken: jest.fn() } },
       ],
     }).compile();
     const controller = modulo.get(RotasController);
@@ -63,8 +63,8 @@ describe('RotasController', () => {
     expect(priceCheckJob.executar).toHaveBeenCalledTimes(1);
   });
 
-  it('bloqueia a verificação manual em produção', async () => {
-    configService.get.mockReturnValue('production');
+  it('executa a verificação manual em produção para usuário autenticado', async () => {
+    priceCheckJob.executar.mockResolvedValue(undefined);
     const modulo = await Test.createTestingModule({
       controllers: [RotasController],
       providers: [
@@ -86,14 +86,15 @@ describe('RotasController', () => {
           useValue: obterLinksCompraRotaUseCase,
         },
         { provide: PriceCheckJob, useValue: priceCheckJob },
-        { provide: ConfigService, useValue: configService },
+        { provide: AutenticacaoGuard, useValue: autenticacaoGuard },
+        { provide: SessaoService, useValue: { validarAccessToken: jest.fn() } },
       ],
     }).compile();
     const controller = modulo.get(RotasController);
 
-    await expect(controller.verificarPrecos()).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
-    expect(priceCheckJob.executar).not.toHaveBeenCalled();
+    await expect(controller.verificarPrecos()).resolves.toEqual({
+      mensagem: 'Verificação de preços concluída.',
+    });
+    expect(priceCheckJob.executar).toHaveBeenCalledTimes(1);
   });
 });

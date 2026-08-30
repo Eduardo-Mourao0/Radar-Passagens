@@ -10,13 +10,13 @@ export class ListarHistoricoRotaUseCase {
     private readonly rotasRepository: RotasRepository,
   ) {}
 
-  async execute(rotaId: string) {
-    const rota = await this.rotasRepository.buscarPorId(rotaId);
+  async execute(rotaId: string, usuarioId: string) {
+    const rota = await this.rotasRepository.buscarPorId(rotaId, usuarioId);
 
     if (!rota) {
       throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
     }
 
-    return this.rotasRepository.listarHistorico(rotaId);
+    return this.rotasRepository.listarHistorico(rotaId, usuarioId);
   }
 }

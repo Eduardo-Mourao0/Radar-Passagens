@@ -15,15 +15,18 @@ export class ObterLinksCompraRotaUseCase {
     private readonly consultarPrecosVoo: ConsultarPrecosVoo,
   ) {}
 
-  async execute(rotaId: string) {
+  async execute(rotaId: string, usuarioId: string) {
     if (!z.uuid().safeParse(rotaId).success) {
       throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
     }
 
-    const rota = await this.rotasRepository.buscarPorId(rotaId);
+    const rota = await this.rotasRepository.buscarPorId(rotaId, usuarioId);
     if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
 
-    const [cotacao] = await this.rotasRepository.listarHistorico(rotaId);
+    const [cotacao] = await this.rotasRepository.listarHistorico(
+      rotaId,
+      usuarioId,
+    );
     if (!cotacao?.ignavId) {
       throw new NotFoundException(MENSAGENS_ERRO.linksCompraIndisponiveis);
     }

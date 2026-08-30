@@ -1,4 +1,13 @@
 export const MENSAGENS_ERRO = {
+  telefoneInvalido: 'Informe um número de telefone válido no formato E.164.',
+  pinInvalido: 'O PIN deve conter exatamente quatro dígitos.',
+  telefoneJaCadastrado: 'Este número de telefone já possui uma conta.',
+  credenciaisInvalidas: 'Telefone ou PIN inválido.',
+  contaTemporariamenteBloqueada:
+    'Conta temporariamente bloqueada por tentativas inválidas.',
+  verificacaoTelefoneInvalida: 'Verificação de telefone inválida ou expirada.',
+  telefoneTelegramDivergente:
+    'O telefone compartilhado no Telegram não corresponde ao informado.',
   codigoIataInvalido: 'Informe um código IATA de três letras maiúsculas.',
   origemDestinoIguais: 'origem e destino devem ser diferentes.',
   dataIdaPassada: 'dataIda deve ser hoje ou uma data futura.',

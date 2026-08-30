@@ -81,25 +81,37 @@ O arquivo `.env.example` contém valores locais prontos para o Docker.
 | `IGNAV_API_KEY`      | Chave privada da API Ignav.                          |
 | `IGNAV_BASE_URL`     | URL base da API Ignav.                               |
 | `TELEGRAM_BOT_TOKEN` | Token privado do bot criado no BotFather.            |
-| `TELEGRAM_CHAT_ID`   | Identificador do chat ou grupo que recebe alertas.   |
+| `TELEGRAM_BOT_USERNAME` | Nome público do bot, sem `@`, usado nos links de confirmação. |
+| `TELEGRAM_WEBHOOK_SECRET` | Segredo enviado pelo Telegram no webhook de autenticação. |
+| `PUBLIC_API_URL` | URL HTTPS pública da API, usada para configurar o webhook. |
+| `JWT_ACCESS_SECRET` | Segredo do JWT de acesso, válido por 15 minutos. |
+| `JWT_REFRESH_SECRET` | Segredo do token temporário de redefinição de PIN. |
 
 Nunca envie o arquivo `.env` para o repositório.
 
 Em desenvolvimento, o CORS aceita somente `http://localhost:5173`. Em produção, defina `FRONTEND_URL` com o domínio público do frontend, por exemplo `https://radar-passagens-web.example.com`.
 
-### Configurar o Telegram
+### Configurar o Telegram e a autenticação
 
 1. No Telegram, abra o perfil `@BotFather`, envie `/newbot` e copie o token fornecido.
-2. Envie qualquer mensagem para o bot criado.
-3. Acesse `https://api.telegram.org/bot<SEU_TOKEN>/getUpdates` no navegador e copie o valor de `message.chat.id` retornado.
-4. Preencha no seu `.env`:
+2. Defina um nome de usuário público para o bot e preencha no `.env`:
 
 ```env
 TELEGRAM_BOT_TOKEN=seu_token
-TELEGRAM_CHAT_ID=seu_chat_id
+TELEGRAM_BOT_USERNAME=seu_bot
+PUBLIC_API_URL=https://api.seu-dominio.com
+TELEGRAM_WEBHOOK_SECRET=um_segredo_aleatorio_longo
+JWT_ACCESS_SECRET=um_segredo_aleatorio_longo
+JWT_REFRESH_SECRET=outro_segredo_aleatorio_longo
 ```
 
-Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e repita o passo 3. O `chat_id` de grupos normalmente é negativo.
+3. Configure o webhook HTTPS uma vez:
+
+```text
+https://api.telegram.org/bot<SEU_TOKEN>/setWebhook?url=<PUBLIC_API_URL>/auth/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>
+```
+
+Cada pessoa inicia o bot por um link gerado no cadastro e compartilha voluntariamente o próprio contato. O chat confirmado recebe somente os alertas das rotas daquela pessoa.
 
 ## Endpoints disponíveis
 
@@ -113,6 +125,12 @@ Para receber em um grupo, adicione o bot ao grupo, envie uma mensagem nele e rep
 | `GET`    | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
 | `PUT`    | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
 | `POST`   | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
+| `POST`   | `/auth/cadastros`          | Inicia o cadastro e a confirmação do telefone no Telegram. |
+| `POST`   | `/auth/login`              | Autentica com telefone e PIN de quatro dígitos. |
+| `POST`   | `/auth/refresh`            | Renova a sessão pelo cookie HttpOnly. |
+| `POST`   | `/auth/logout`             | Revoga a sessão atual. |
+| `POST`   | `/auth/recuperacoes`       | Inicia a recuperação do PIN pelo Telegram. |
+| `POST`   | `/auth/redefinir-senha`    | Define um novo PIN após a confirmação. |
 
 ### Criar rota
 
@@ -127,6 +145,24 @@ Content-Type: application/json
   "dataVolta": "2026-12-20"
 }
 ```
+
+Todos os endpoints de `/rotas` exigem `Authorization: Bearer <accessToken>` e retornam somente os dados do usuário autenticado. Para renovar a sessão em uma aplicação web, envie a chamada para `/auth/refresh` com `credentials: 'include'`.
+
+### Cadastro e login
+
+Inicie o cadastro com telefone no padrão E.164 e um PIN de quatro dígitos:
+
+```http
+POST /auth/cadastros
+Content-Type: application/json
+
+{
+  "telefone": "+5561999999999",
+  "pin": "1234"
+}
+```
+
+A resposta contém `urlTelegram` e `id`. Abra o link, envie `/start` ao bot e toque em **Compartilhar meu número**. Consulte `GET /auth/verificacoes/:id` até receber `status: "VERIFICADA"`; então faça login em `POST /auth/login`. O access token dura 15 minutos e o refresh token fica somente no cookie HttpOnly por até 30 dias.
 
 Regras aplicadas no cadastro:
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { HttpService } from '@nestjs/axios';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -9,13 +10,13 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
     getOrThrow: jest.fn((chave: string) => {
       const configuracoes: Record<string, string> = {
         TELEGRAM_BOT_TOKEN: 'token-secreto',
-        TELEGRAM_CHAT_ID: '123456',
       };
 
       return configuracoes[chave];
     }),
   } as unknown as ConfigService;
   const notificacao = {
+    telegramChatId: '123456',
     rota: { id: 'rota-1', origem: 'BSB', destino: 'FOR' },
     alerta: { precoAlvo: '1500.00' },
     historico: { preco: '1400.00', companhia: 'Azul' },
@@ -96,18 +97,16 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
   it('rejeita chat_id fora do formato aceito pelo Telegram', async () => {
     const post = jest.fn();
     const httpService = { post } as unknown as HttpService;
-    const configuracaoInvalida = {
-      getOrThrow: jest.fn((chave: string) =>
-        chave === 'TELEGRAM_CHAT_ID' ? 'chat-invalido' : 'token-secreto',
-      ),
-    } as unknown as ConfigService;
+    const configuracaoInvalida = configService;
     const service = new TelegramNotificadorAlertaPrecoService(
       httpService,
       configuracaoInvalida,
     );
     const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
-    await expect(service.enviar(notificacao)).resolves.toBe(false);
+    await expect(
+      service.enviar({ ...notificacao, telegramChatId: 'chat-invalido' }),
+    ).resolves.toBe(false);
     expect(post).not.toHaveBeenCalled();
     errorLog.mockRestore();
   });

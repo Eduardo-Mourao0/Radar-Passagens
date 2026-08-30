@@ -3,6 +3,7 @@ import { RegraDeNegocioError } from '../../errors/regra-de-negocio.error';
 
 export type Rota = Readonly<{
   id: string;
+  usuarioId: string;
   chaveMonitoramento: string;
   origem: string;
   destino: string;
@@ -20,6 +21,7 @@ export type DadosNovaRota = Readonly<{
 }>;
 
 export type NovaRota = Readonly<{
+  usuarioId: string;
   chaveMonitoramento: string;
   origem: string;
   destino: string;
@@ -28,7 +30,7 @@ export type NovaRota = Readonly<{
 }>;
 
 export class RotaEntity {
-  static criarNova(dados: DadosNovaRota): NovaRota {
+  static criarNova(dados: DadosNovaRota): Omit<NovaRota, 'usuarioId'> {
     if (dados.origem === dados.destino) {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.origemDestinoIguais);
     }

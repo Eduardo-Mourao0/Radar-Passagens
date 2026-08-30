@@ -12,11 +12,14 @@ export class DesativarRotaUseCase {
   ) {}
 
   async execute(comando: DesativarRotaCommand) {
-    const rota = await this.rotasRepository.buscarPorId(comando.rotaId);
+    const rota = await this.rotasRepository.buscarPorId(
+      comando.rotaId,
+      comando.usuarioId,
+    );
     if (!rota) throw new NotFoundException(MENSAGENS_ERRO.rotaNaoEncontrada);
 
     if (!rota.ativa) return rota;
 
-    return this.rotasRepository.desativar(rota.id);
+    return this.rotasRepository.desativar(rota.id, comando.usuarioId);
   }
 }

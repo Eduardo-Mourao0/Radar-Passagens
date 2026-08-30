@@ -76,25 +76,27 @@ export class IgnavService implements ConsultarPrecosVoo {
 
     try {
       const resposta = await firstValueFrom(
-        this.httpService.post<unknown>(
-          `${baseUrl.replace(/\/$/, '')}/fares/${
-            dataVolta ? 'round-trip' : 'one-way'
-          }`,
-          {
-            origin: rota.origem,
-            destination: rota.destino,
-            departure_date: dataIda,
-            ...(dataVolta ? { return_date: dataVolta } : {}),
-            adults: 1,
-            market: 'BR',
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Api-Key': apiKey,
+        this.httpService
+          .post<unknown>(
+            `${baseUrl.replace(/\/$/, '')}/fares/${
+              dataVolta ? 'round-trip' : 'one-way'
+            }`,
+            {
+              origin: rota.origem,
+              destination: rota.destino,
+              departure_date: dataIda,
+              ...(dataVolta ? { return_date: dataVolta } : {}),
+              adults: 1,
+              market: 'BR',
             },
-          },
-        ).pipe(timeout(10_000)),
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Api-Key': apiKey,
+              },
+            },
+          )
+          .pipe(timeout(10_000)),
       );
 
       const resultado = respostaIgnavSchema.safeParse(resposta.data);
@@ -173,7 +175,9 @@ export class IgnavService implements ConsultarPrecosVoo {
       const resultado = respostaLinksCompraSchema.safeParse(resposta.data);
       if (!resultado.success) {
         this.registrarFalhaConsulta('resposta_invalida');
-        throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavConsultaIndisponivel);
+        throw new ServiceUnavailableException(
+          MENSAGENS_ERRO.ignavConsultaIndisponivel,
+        );
       }
       const links = resultado.data.booking_options.flatMap((opcao) =>
         opcao.links.map((link) => ({
@@ -183,14 +187,18 @@ export class IgnavService implements ConsultarPrecosVoo {
         })),
       );
       if (links.length === 0) {
-        this.logger.warn(JSON.stringify({ evento: 'ignav_link_compra_indisponivel' }));
+        this.logger.warn(
+          JSON.stringify({ evento: 'ignav_link_compra_indisponivel' }),
+        );
         return [];
       }
       return links;
     } catch (erro: unknown) {
       if (erro instanceof ServiceUnavailableException) throw erro;
       this.registrarFalhaConsulta(this.identificarTipoFalha(erro));
-      throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavConsultaIndisponivel);
+      throw new ServiceUnavailableException(
+        MENSAGENS_ERRO.ignavConsultaIndisponivel,
+      );
     }
   }
 

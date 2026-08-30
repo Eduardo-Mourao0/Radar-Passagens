@@ -8,6 +8,7 @@ import { PrismaModule } from '../infra/database/prisma/prisma.module';
 import { IgnavModule } from '../infra/ignav/ignav.module';
 import { RegraDeNegocioExceptionFilter } from '../infra/http/filters/regra-de-negocio-exception.filter';
 import { RotasModule } from './modules/rotas.module';
+import { AutenticacaoModule } from './modules/autenticacao.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RotasModule } from './modules/rotas.module';
     PrismaModule,
     ScheduleModule.forRoot(),
     IgnavModule,
+    AutenticacaoModule,
     RotasModule,
   ],
   controllers: [AppController],

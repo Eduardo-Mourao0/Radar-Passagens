@@ -21,9 +21,14 @@ import { RotasRepository } from '../../../../domain/rotas/repositories/rotas.rep
 export class PrismaRotasRepository implements RotasRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async buscarPorChave(chaveMonitoramento: string): Promise<Rota | null> {
+  async buscarPorChave(
+    usuarioId: string,
+    chaveMonitoramento: string,
+  ): Promise<Rota | null> {
     const rota = await this.prisma.rota.findUnique({
-      where: { chaveMonitoramento },
+      where: {
+        usuarioId_chaveMonitoramento: { usuarioId, chaveMonitoramento },
+      },
     });
 
     return rota ? this.mapearRota(rota) : null;
@@ -37,30 +42,31 @@ export class PrismaRotasRepository implements RotasRepository {
     return this.mapearRota(rota);
   }
 
-  async reativar(id: string): Promise<Rota> {
+  async reativar(id: string, usuarioId: string): Promise<Rota> {
     const rota = await this.prisma.rota.update({
-      where: { id },
+      where: { id, usuarioId },
       data: { ativa: true },
     });
 
     return this.mapearRota(rota);
   }
 
-  async desativar(id: string): Promise<Rota> {
+  async desativar(id: string, usuarioId: string): Promise<Rota> {
     const rota = await this.prisma.rota.update({
-      where: { id },
+      where: { id, usuarioId },
       data: { ativa: false },
     });
 
     return this.mapearRota(rota);
   }
 
-  async excluir(id: string): Promise<void> {
-    await this.prisma.rota.deleteMany({ where: { id } });
+  async excluir(id: string, usuarioId: string): Promise<void> {
+    await this.prisma.rota.deleteMany({ where: { id, usuarioId } });
   }
 
-  async listar(): Promise<RotaComAlerta[]> {
+  async listar(usuarioId: string): Promise<RotaComAlerta[]> {
     const rotas = await this.prisma.rota.findMany({
+      where: { usuarioId },
       orderBy: { criadoEm: 'desc' },
       include: { alertaPreco: true },
     });
@@ -89,17 +95,23 @@ export class PrismaRotasRepository implements RotasRepository {
     return resultado.count;
   }
 
-  async buscarPorId(id: string): Promise<Rota | null> {
+  async buscarPorId(id: string, usuarioId?: string): Promise<Rota | null> {
     const rota = await this.prisma.rota.findUnique({
-      where: { id },
+      where: { id, ...(usuarioId ? { usuarioId } : {}) },
     });
 
     return rota ? this.mapearRota(rota) : null;
   }
 
-  async listarHistorico(rotaId: string): Promise<HistoricoPreco[]> {
+  async listarHistorico(
+    rotaId: string,
+    usuarioId?: string,
+  ): Promise<HistoricoPreco[]> {
     const historicos = await this.prisma.historicoPreco.findMany({
-      where: { rotaId },
+      where: {
+        rotaId,
+        ...(usuarioId ? { rota: { usuarioId } } : {}),
+      },
       orderBy: { coletadoEm: 'desc' },
     });
 
@@ -179,6 +191,7 @@ export class PrismaRotasRepository implements RotasRepository {
   private mapearRota(rota: PrismaRota): Rota {
     return {
       id: rota.id,
+      usuarioId: rota.usuarioId,
       chaveMonitoramento: rota.chaveMonitoramento,
       origem: rota.origem,
       destino: rota.destino,

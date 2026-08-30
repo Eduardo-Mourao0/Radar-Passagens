@@ -148,8 +148,12 @@ describe('PriceCheckJob', () => {
     expect(
       rotasRepository.desativarRotasComDataIdaPassada,
     ).toHaveBeenCalledWith(expect.any(Date));
-    const [inicioDeHoje] =
+    const chamada: unknown =
       rotasRepository.desativarRotasComDataIdaPassada.mock.calls[0];
+    if (!Array.isArray(chamada) || !(chamada[0] instanceof Date)) {
+      throw new Error('A data de referência não foi informada ao repositório.');
+    }
+    const inicioDeHoje = chamada[0];
     expect(inicioDeHoje).toEqual(
       new Date(
         inicioDeHoje.getFullYear(),

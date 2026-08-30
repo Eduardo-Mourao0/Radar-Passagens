@@ -14,6 +14,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { AutenticarUsuarioUseCase } from '../../../application/autenticacao/use-cases/autenticar-usuario.use-case';
+import { ConfirmarCodigoTelegramUseCase } from '../../../application/autenticacao/use-cases/confirmar-codigo-telegram.use-case';
 import { IniciarVerificacaoTelefoneUseCase } from '../../../application/autenticacao/use-cases/iniciar-verificacao-telefone.use-case';
 import { ObterStatusVerificacaoUseCase } from '../../../application/autenticacao/use-cases/obter-status-verificacao.use-case';
 import { ProcessarAtualizacaoTelegramUseCase } from '../../../application/autenticacao/use-cases/processar-atualizacao-telegram.use-case';
@@ -22,6 +23,7 @@ import { SessaoCriada, SessaoService } from '../../autenticacao/sessao.service';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 import {
   cadastroSchema,
+  confirmarCodigoTelegramSchema,
   loginSchema,
   redefinirPinSchema,
   telefoneSchema,
@@ -29,6 +31,7 @@ import {
 } from '../schemas/autenticacao/autenticacao.schema';
 import type {
   CadastroInput,
+  ConfirmarCodigoTelegramInput,
   LoginInput,
   RedefinirPinInput,
   TelefoneInput,
@@ -40,7 +43,6 @@ type AtualizacaoTelegram = {
     text?: string;
     chat?: { id?: number; type?: string };
     from?: { id?: number };
-    contact?: { phone_number?: string; user_id?: number };
   };
 };
 
@@ -48,6 +50,7 @@ type AtualizacaoTelegram = {
 export class AutenticacaoController {
   constructor(
     private readonly iniciarVerificacao: IniciarVerificacaoTelefoneUseCase,
+    private readonly confirmarCodigoTelegram: ConfirmarCodigoTelegramUseCase,
     private readonly obterStatusVerificacao: ObterStatusVerificacaoUseCase,
     private readonly autenticarUsuario: AutenticarUsuarioUseCase,
     private readonly redefinirPin: RedefinirPinUseCase,
@@ -88,6 +91,22 @@ export class AutenticacaoController {
     params: VerificacaoParams,
   ) {
     return this.obterStatusVerificacao.execute(params.id);
+  }
+
+  @Post('verificacoes/:id/confirmar')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async confirmarCodigo(
+    @Param(new ZodValidationPipe(verificacaoParamsSchema))
+    params: VerificacaoParams,
+    @Body(new ZodValidationPipe(confirmarCodigoTelegramSchema))
+    input: ConfirmarCodigoTelegramInput,
+    @Req() request: Request,
+  ): Promise<void> {
+    await this.confirmarCodigoTelegram.execute(
+      params.id,
+      input.codigo,
+      this.obterIp(request),
+    );
   }
 
   @Post('login')
@@ -171,17 +190,6 @@ export class AutenticacaoController {
         telegramUsuarioId,
       });
       return;
-    }
-
-    if (mensagem.contact?.phone_number) {
-      await this.processarAtualizacaoTelegram.confirmarContato({
-        telefone: mensagem.contact.phone_number,
-        chatId,
-        telegramUsuarioId,
-        ...(mensagem.contact.user_id !== undefined
-          ? { contatoUsuarioId: String(mensagem.contact.user_id) }
-          : {}),
-      });
     }
   }
 

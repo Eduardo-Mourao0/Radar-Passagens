@@ -82,7 +82,7 @@ O arquivo `.env.example` contém valores locais prontos para o Docker.
 | `IGNAV_BASE_URL`     | URL base da API Ignav.                               |
 | `TELEGRAM_BOT_TOKEN` | Token privado do bot criado no BotFather.            |
 | `TELEGRAM_BOT_USERNAME` | Nome público do bot, sem `@`, usado nos links de confirmação. |
-| `TELEGRAM_WEBHOOK_SECRET` | Segredo enviado pelo Telegram no webhook de autenticação. |
+| `TELEGRAM_WEBHOOK_SECRET` | Segredo enviado pelo Telegram no webhook de confirmação. |
 | `PUBLIC_API_URL` | URL HTTPS pública da API, usada para configurar o webhook. |
 | `JWT_ACCESS_SECRET` | Segredo do JWT de acesso, válido por 15 minutos. |
 | `JWT_REFRESH_SECRET` | Segredo do token temporário de redefinição de PIN. |
@@ -111,7 +111,7 @@ JWT_REFRESH_SECRET=outro_segredo_aleatorio_longo
 https://api.telegram.org/bot<SEU_TOKEN>/setWebhook?url=<PUBLIC_API_URL>/auth/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>
 ```
 
-Cada pessoa inicia o bot por um link gerado no cadastro e compartilha voluntariamente o próprio contato. O chat confirmado recebe somente os alertas das rotas daquela pessoa.
+Cada pessoa inicia o bot por um link gerado no cadastro. O bot envia um código de seis dígitos, que deve ser informado no frontend para confirmar a conta e vincular o chat aos alertas. Esse código confirma a conta Telegram, não a posse do número de telefone informado.
 
 ## Endpoints disponíveis
 
@@ -130,6 +130,7 @@ Cada pessoa inicia o bot por um link gerado no cadastro e compartilha voluntaria
 | `POST`   | `/auth/refresh`            | Renova a sessão pelo cookie HttpOnly. |
 | `POST`   | `/auth/logout`             | Revoga a sessão atual. |
 | `POST`   | `/auth/recuperacoes`       | Inicia a recuperação do PIN pelo Telegram. |
+| `POST`   | `/auth/verificacoes/:id/confirmar` | Confirma o código de seis dígitos enviado pelo Telegram. |
 | `POST`   | `/auth/redefinir-senha`    | Define um novo PIN após a confirmação. |
 
 ### Criar rota
@@ -162,7 +163,7 @@ Content-Type: application/json
 }
 ```
 
-A resposta contém `urlTelegram` e `id`. Abra o link, envie `/start` ao bot e toque em **Compartilhar meu número**. Consulte `GET /auth/verificacoes/:id` até receber `status: "VERIFICADA"`; então faça login em `POST /auth/login`. O access token dura 15 minutos e o refresh token fica somente no cookie HttpOnly por até 30 dias.
+A resposta contém `urlTelegram` e `id`. Abra o link e envie `/start` ao bot para receber o código de seis dígitos. Envie o código para `POST /auth/verificacoes/:id/confirmar` e, após receber `204 No Content`, faça login em `POST /auth/login`. O access token dura 15 minutos e o refresh token fica somente no cookie HttpOnly por até 30 dias.
 
 Regras aplicadas no cadastro:
 

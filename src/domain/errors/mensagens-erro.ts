@@ -5,9 +5,8 @@ export const MENSAGENS_ERRO = {
   credenciaisInvalidas: 'Telefone ou PIN inválido.',
   contaTemporariamenteBloqueada:
     'Conta temporariamente bloqueada por tentativas inválidas.',
-  verificacaoTelefoneInvalida: 'Verificação de telefone inválida ou expirada.',
-  telefoneTelegramDivergente:
-    'O telefone compartilhado no Telegram não corresponde ao informado.',
+  verificacaoInvalida: 'Verificação inválida ou expirada.',
+  codigoVerificacaoInvalido: 'Código de verificação inválido ou expirado.',
   codigoIataInvalido: 'Informe um código IATA de três letras maiúsculas.',
   origemDestinoIguais: 'origem e destino devem ser diferentes.',
   dataIdaPassada: 'dataIda deve ser hoje ou uma data futura.',

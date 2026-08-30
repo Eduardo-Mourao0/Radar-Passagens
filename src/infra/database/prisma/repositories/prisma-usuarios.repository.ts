@@ -43,7 +43,7 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
     telefone: string;
     senhaHash: string;
     telegramChatId: string;
-    telefoneVerificadoEm: Date;
+    verificadoEm: Date;
   }): Promise<Usuario> {
     const usuario = await this.prisma.usuario.create({ data: dados });
     return this.mapearUsuario(usuario);
@@ -98,46 +98,98 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
     return verificacao ? this.mapearVerificacao(verificacao) : null;
   }
 
-  async buscarVerificacaoVinculadaAoTelegram(
-    telegramChatId: string,
-    telegramUsuarioId: string,
-  ): Promise<VerificacaoTelefone | null> {
-    const verificacao = await this.prisma.verificacaoTelefone.findFirst({
-      where: {
-        telegramChatId,
-        telegramUsuarioId,
-        verificadaEm: null,
-        consumidaEm: null,
-      },
-      orderBy: { criadoEm: 'desc' },
-    });
-    return verificacao ? this.mapearVerificacao(verificacao) : null;
-  }
+  async prepararCodigoTelegram(dados: {
+    verificacaoId: string;
+    telegramChatId: string;
+    telegramUsuarioId: string;
+    codigoHash: string;
+    quando: Date;
+  }): Promise<boolean> {
+    const reenvioPermitidoEm = new Date(dados.quando.getTime() - 60_000);
 
-  async vincularTelegramNaVerificacao(
-    id: string,
-    telegramChatId: string,
-    telegramUsuarioId: string,
-  ): Promise<boolean> {
+    // The conditional update atomically reserves the code for this Telegram identity.
     const resultado = await this.prisma.verificacaoTelefone.updateMany({
       where: {
-        id,
-        telegramChatId: null,
-        telegramUsuarioId: null,
+        id: dados.verificacaoId,
         consumidaEm: null,
         verificadaEm: null,
-        expiraEm: { gt: new Date() },
+        expiraEm: { gt: dados.quando },
+        AND: [
+          {
+            OR: [
+              { telegramChatId: null },
+              { telegramChatId: dados.telegramChatId },
+            ],
+          },
+          {
+            OR: [
+              { telegramUsuarioId: null },
+              { telegramUsuarioId: dados.telegramUsuarioId },
+            ],
+          },
+          {
+            OR: [
+              { codigoEnviadoEm: null },
+              {
+                codigoEnviadoEm: {
+                  lte: reenvioPermitidoEm,
+                },
+              },
+            ],
+          },
+        ],
       },
-      data: { telegramChatId, telegramUsuarioId },
+      data: {
+        telegramChatId: dados.telegramChatId,
+        telegramUsuarioId: dados.telegramUsuarioId,
+        codigoHash: dados.codigoHash,
+        codigoEnviadoEm: dados.quando,
+        tentativasCodigo: 0,
+      },
     });
     return resultado.count === 1;
   }
 
-  async finalizarVerificacaoTelegram(dados: {
+  async cancelarCodigoTelegram(
+    verificacaoId: string,
+    codigoHash: string,
+  ): Promise<void> {
+    await this.prisma.verificacaoTelefone.updateMany({
+      where: {
+        id: verificacaoId,
+        codigoHash,
+        consumidaEm: null,
+        verificadaEm: null,
+      },
+      data: {
+        codigoHash: null,
+        codigoEnviadoEm: null,
+        tentativasCodigo: 0,
+      },
+    });
+  }
+
+  async incrementarTentativasCodigo(
+    id: string,
+    quando: Date,
+    maximoTentativas: number,
+  ): Promise<boolean> {
+    const resultado = await this.prisma.verificacaoTelefone.updateMany({
+      where: {
+        id,
+        consumidaEm: null,
+        verificadaEm: null,
+        expiraEm: { gt: quando },
+        tentativasCodigo: { lt: maximoTentativas },
+      },
+      data: { tentativasCodigo: { increment: 1 } },
+    });
+    return resultado.count === 1;
+  }
+
+  async finalizarVerificacaoPorCodigo(dados: {
     verificacaoId: string;
-    telefone: string;
-    chatId: string;
-    telegramUsuarioId: string;
+    codigoHash: string;
     quando: Date;
   }): Promise<'VERIFICADA' | 'INDISPONIVEL' | 'TELEFONE_JA_CADASTRADO'> {
     try {
@@ -145,15 +197,15 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
         const verificacao = await transacao.verificacaoTelefone.findFirst({
           where: {
             id: dados.verificacaoId,
-            telefone: dados.telefone,
-            telegramChatId: dados.chatId,
-            telegramUsuarioId: dados.telegramUsuarioId,
+            codigoHash: dados.codigoHash,
+            telegramChatId: { not: null },
+            telegramUsuarioId: { not: null },
             consumidaEm: null,
             verificadaEm: null,
             expiraEm: { gt: dados.quando },
           },
         });
-        if (!verificacao) return 'INDISPONIVEL';
+        if (!verificacao || !verificacao.telegramChatId) return 'INDISPONIVEL';
 
         if (verificacao.finalidade === 'CADASTRO') {
           if (!verificacao.senhaHash) return 'INDISPONIVEL';
@@ -161,8 +213,8 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
             data: {
               telefone: verificacao.telefone,
               senhaHash: verificacao.senhaHash,
-              telegramChatId: dados.chatId,
-              telefoneVerificadoEm: dados.quando,
+              telegramChatId: verificacao.telegramChatId,
+              verificadoEm: dados.quando,
             },
           });
         }
@@ -259,7 +311,7 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
       telefone: usuario.telefone,
       senhaHash: usuario.senhaHash,
       telegramChatId: usuario.telegramChatId,
-      telefoneVerificadoEm: usuario.telefoneVerificadoEm,
+      verificadoEm: usuario.verificadoEm,
       tentativasLoginFalhas: usuario.tentativasLoginFalhas,
       bloqueadoAte: usuario.bloqueadoAte,
     };
@@ -276,6 +328,9 @@ export class PrismaUsuariosRepository implements UsuariosRepository {
       tokenInicio: verificacao.tokenInicio,
       telegramChatId: verificacao.telegramChatId,
       telegramUsuarioId: verificacao.telegramUsuarioId,
+      codigoHash: verificacao.codigoHash,
+      tentativasCodigo: verificacao.tentativasCodigo,
+      codigoEnviadoEm: verificacao.codigoEnviadoEm,
       verificadaEm: verificacao.verificadaEm,
       consumidaEm: verificacao.consumidaEm,
       expiraEm: verificacao.expiraEm,

@@ -28,16 +28,12 @@ export class RedefinirPinUseCase {
       !verificacao.verificadaEm ||
       verificacao.expiraEm <= new Date()
     ) {
-      throw new UnauthorizedException(
-        MENSAGENS_ERRO.verificacaoTelefoneInvalida,
-      );
+      throw new UnauthorizedException(MENSAGENS_ERRO.verificacaoInvalida);
     }
 
     const usuario = await this.usuariosRepository.buscarPorId(payload.sub);
     if (!usuario || usuario.telefone !== verificacao.telefone) {
-      throw new UnauthorizedException(
-        MENSAGENS_ERRO.verificacaoTelefoneInvalida,
-      );
+      throw new UnauthorizedException(MENSAGENS_ERRO.verificacaoInvalida);
     }
 
     const agora = new Date();

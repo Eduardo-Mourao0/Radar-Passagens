@@ -15,4 +15,16 @@ describe('LimiteAutenticacaoService', () => {
       HttpException,
     );
   });
+
+  it('limita confirmações de código por IP', () => {
+    const service = new LimiteAutenticacaoService();
+
+    for (let tentativa = 0; tentativa < 5; tentativa += 1) {
+      expect(() => service.validarConfirmacaoCodigo('127.0.0.1')).not.toThrow();
+    }
+
+    expect(() => service.validarConfirmacaoCodigo('127.0.0.1')).toThrow(
+      HttpException,
+    );
+  });
 });

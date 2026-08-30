@@ -15,7 +15,7 @@ export interface UsuariosRepository {
     telefone: string;
     senhaHash: string;
     telegramChatId: string;
-    telefoneVerificadoEm: Date;
+    verificadoEm: Date;
   }): Promise<Usuario>;
   atualizarSenha(id: string, senhaHash: string): Promise<void>;
   atualizarTentativasLogin(
@@ -34,20 +34,25 @@ export interface UsuariosRepository {
   buscarVerificacaoPorTokenInicio(
     tokenInicio: string,
   ): Promise<VerificacaoTelefone | null>;
-  buscarVerificacaoVinculadaAoTelegram(
-    telegramChatId: string,
-    telegramUsuarioId: string,
-  ): Promise<VerificacaoTelefone | null>;
-  vincularTelegramNaVerificacao(
-    id: string,
-    telegramChatId: string,
-    telegramUsuarioId: string,
-  ): Promise<boolean>;
-  finalizarVerificacaoTelegram(dados: {
+  prepararCodigoTelegram(dados: {
     verificacaoId: string;
-    telefone: string;
-    chatId: string;
+    telegramChatId: string;
     telegramUsuarioId: string;
+    codigoHash: string;
+    quando: Date;
+  }): Promise<boolean>;
+  cancelarCodigoTelegram(
+    verificacaoId: string,
+    codigoHash: string,
+  ): Promise<void>;
+  incrementarTentativasCodigo(
+    id: string,
+    quando: Date,
+    maximoTentativas: number,
+  ): Promise<boolean>;
+  finalizarVerificacaoPorCodigo(dados: {
+    verificacaoId: string;
+    codigoHash: string;
     quando: Date;
   }): Promise<'VERIFICADA' | 'INDISPONIVEL' | 'TELEFONE_JA_CADASTRADO'>;
   marcarVerificacaoComoVerificada(id: string, quando: Date): Promise<void>;

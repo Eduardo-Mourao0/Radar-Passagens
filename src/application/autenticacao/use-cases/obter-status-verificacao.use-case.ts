@@ -16,7 +16,7 @@ export class ObterStatusVerificacaoUseCase {
     const verificacao =
       await this.usuariosRepository.buscarVerificacaoPorId(id);
     if (!verificacao)
-      throw new NotFoundException(MENSAGENS_ERRO.verificacaoTelefoneInvalida);
+      throw new NotFoundException(MENSAGENS_ERRO.verificacaoInvalida);
 
     const expirada =
       !verificacao.verificadaEm && verificacao.expiraEm <= new Date();

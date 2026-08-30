@@ -33,7 +33,10 @@ describe('Casos de uso de autenticação', () => {
   const sessaoService = {
     criar: jest.fn(),
   } as unknown as SessaoService;
-  const solicitadorContato = { solicitarContato: jest.fn() };
+  const solicitadorContato = {
+    solicitarContato: jest.fn(),
+    enviarMensagem: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -154,6 +157,23 @@ describe('Casos de uso de autenticação', () => {
       usuariosRepository.vincularTelegramNaVerificacao,
     ).toHaveBeenCalledWith(verificacao.id, '123456', '654321');
     expect(solicitadorContato.solicitarContato).toHaveBeenCalledWith('123456');
+  });
+
+  it('orienta o usuário quando recebe /start sem link de confirmação', async () => {
+    const useCase = new ProcessarAtualizacaoTelegramUseCase(
+      usuariosRepository,
+      solicitadorContato,
+    );
+
+    await useCase.iniciar({ chatId: '123456', telegramUsuarioId: '654321' });
+
+    expect(solicitadorContato.enviarMensagem).toHaveBeenCalledWith(
+      '123456',
+      expect.stringContaining('link de confirmação'),
+    );
+    expect(
+      usuariosRepository.buscarVerificacaoPorTokenInicio,
+    ).not.toHaveBeenCalled();
   });
 
   it('recusa contato compartilhado que pertence a outra conta do Telegram', async () => {

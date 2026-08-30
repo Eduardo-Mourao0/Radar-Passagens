@@ -12,24 +12,40 @@ export class TelegramSolicitadorContatoService implements SolicitadorContatoTele
   ) {}
 
   async solicitarContato(chatId: string): Promise<void> {
+    await this.enviar(
+      chatId,
+      'Para confirmar seu cadastro, toque em “Compartilhar meu número”.',
+      {
+        keyboard: [
+          [
+            {
+              text: 'Compartilhar meu número',
+              request_contact: true,
+            },
+          ],
+        ],
+        one_time_keyboard: true,
+        resize_keyboard: true,
+      },
+    );
+  }
+
+  async enviarMensagem(chatId: string, mensagem: string): Promise<void> {
+    await this.enviar(chatId, mensagem);
+  }
+
+  private async enviar(
+    chatId: string,
+    text: string,
+    replyMarkup?: Record<string, unknown>,
+  ): Promise<void> {
     const token = this.configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN');
     await firstValueFrom(
       this.httpService
         .post(`https://api.telegram.org/bot${token}/sendMessage`, {
           chat_id: chatId,
-          text: 'Para confirmar seu cadastro, toque em “Compartilhar meu número”.',
-          reply_markup: {
-            keyboard: [
-              [
-                {
-                  text: 'Compartilhar meu número',
-                  request_contact: true,
-                },
-              ],
-            ],
-            one_time_keyboard: true,
-            resize_keyboard: true,
-          },
+          text,
+          ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
         })
         .pipe(timeout(10_000)),
     );

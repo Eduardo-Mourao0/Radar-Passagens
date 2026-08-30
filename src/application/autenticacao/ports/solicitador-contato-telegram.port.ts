@@ -4,4 +4,5 @@ export const SOLICITADOR_CONTATO_TELEGRAM = Symbol(
 
 export interface SolicitadorContatoTelegram {
   solicitarContato(chatId: string): Promise<void>;
+  enviarMensagem(chatId: string, mensagem: string): Promise<void>;
 }

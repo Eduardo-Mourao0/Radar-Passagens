@@ -7,7 +7,7 @@ import type { UsuariosRepository } from '../../../domain/usuarios/repositories/u
 import { UsuarioEntity } from '../../../domain/usuarios/entities/usuario.entity';
 
 type InicioTelegram = Readonly<{
-  tokenInicio: string;
+  tokenInicio?: string;
   chatId: string;
   telegramUsuarioId: string;
 }>;
@@ -29,6 +29,14 @@ export class ProcessarAtualizacaoTelegramUseCase {
   ) {}
 
   async iniciar({ tokenInicio, chatId, telegramUsuarioId }: InicioTelegram) {
+    if (!tokenInicio) {
+      await this.solicitadorContato.enviarMensagem(
+        chatId,
+        'Para iniciar seu cadastro, use o link de confirmação enviado pelo Radar Passagens.',
+      );
+      return;
+    }
+
     const verificacao =
       await this.usuariosRepository.buscarVerificacaoPorTokenInicio(
         tokenInicio,
@@ -39,6 +47,10 @@ export class ProcessarAtualizacaoTelegramUseCase {
       verificacao.verificadaEm ||
       verificacao.expiraEm <= new Date()
     ) {
+      await this.solicitadorContato.enviarMensagem(
+        chatId,
+        'Este link de confirmação é inválido ou expirou. Solicite um novo cadastro no Radar Passagens.',
+      );
       return;
     }
 
@@ -48,7 +60,15 @@ export class ProcessarAtualizacaoTelegramUseCase {
         chatId,
         telegramUsuarioId,
       );
-    if (vinculada) await this.solicitadorContato.solicitarContato(chatId);
+    if (vinculada) {
+      await this.solicitadorContato.solicitarContato(chatId);
+      return;
+    }
+
+    await this.solicitadorContato.enviarMensagem(
+      chatId,
+      'Este link de confirmação já foi utilizado ou expirou. Solicite um novo cadastro no Radar Passagens.',
+    );
   }
 
   async confirmarContato({

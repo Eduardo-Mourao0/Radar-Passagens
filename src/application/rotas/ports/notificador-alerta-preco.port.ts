@@ -10,7 +10,7 @@ export type NotificacaoAlertaPreco = Readonly<{
   telegramChatId: string;
   alerta: AlertaPreco;
   rota: Rota;
-  historico: HistoricoPreco;
+  historico: Pick<HistoricoPreco, 'preco' | 'companhia'>;
 }>;
 
 export interface NotificadorAlertaPreco {

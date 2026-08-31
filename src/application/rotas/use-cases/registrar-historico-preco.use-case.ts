@@ -25,11 +25,14 @@ export class RegistrarHistoricoPrecoUseCase {
     const historico =
       await this.rotasRepository.registrarHistoricoSeDiferente(novoHistorico);
 
-    if (!historico) {
-      return { registrado: false };
-    }
+    // A meta pode ser configurada depois de uma cotação já persistida.
+    await this.avaliarAlertaPrecoUseCase.execute(
+      rota,
+      historico ?? novoHistorico,
+      usuario,
+    );
 
-    await this.avaliarAlertaPrecoUseCase.execute(rota, historico, usuario);
+    if (!historico) return { registrado: false };
 
     return { registrado: true, historico };
   }

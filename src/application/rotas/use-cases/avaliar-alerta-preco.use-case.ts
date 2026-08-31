@@ -24,7 +24,7 @@ export class AvaliarAlertaPrecoUseCase {
 
   async execute(
     rota: Rota,
-    historico: HistoricoPreco,
+    historico: Pick<HistoricoPreco, 'preco' | 'companhia'>,
     usuarioDoContexto?: Usuario,
   ): Promise<void> {
     const alerta = await this.rotasRepository.buscarAlertaPreco(rota.id);

@@ -58,4 +58,14 @@ describe('VerificarPrecoRotaUseCase', () => {
       undefined,
     );
   });
+
+  it('informa indisponibilidade sem propagar falhas da cotação', async () => {
+    consultarPrecosVoo.consultarMenorPreco.mockRejectedValue(
+      new Error('Ignav indisponível'),
+    );
+
+    await expect(useCase.executarResiliente(rota)).resolves.toBe(
+      'INDISPONIVEL',
+    );
+  });
 });

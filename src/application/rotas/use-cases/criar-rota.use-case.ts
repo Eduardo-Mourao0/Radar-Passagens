@@ -1,22 +1,23 @@
-import { ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
-import { RotaEntity } from '../../../domain/rotas/entities/rota.entity';
+import { Rota, RotaEntity } from '../../../domain/rotas/entities/rota.entity';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
 import { CriarRotaCommand } from '../commands/criar-rota.command';
-import { VerificarPrecoRotaUseCase } from './verificar-preco-rota.use-case';
+import {
+  RotaComSituacaoCotacao,
+  VerificarPrecoRotaUseCase,
+} from './verificar-preco-rota.use-case';
 
 @Injectable()
 export class CriarRotaUseCase {
-  private readonly logger = new Logger(CriarRotaUseCase.name);
-
   constructor(
     @Inject(ROTAS_REPOSITORY)
     private readonly rotasRepository: RotasRepository,
     private readonly verificarPrecoRota: VerificarPrecoRotaUseCase,
   ) {}
 
-  async execute(comando: CriarRotaCommand) {
+  async execute(comando: CriarRotaCommand): Promise<RotaComSituacaoCotacao> {
     const novaRota = {
       ...RotaEntity.criarNova(comando),
       usuarioId: comando.usuarioId,
@@ -33,30 +34,20 @@ export class CriarRotaUseCase {
           rotaExistente.id,
           comando.usuarioId,
         );
-        await this.verificarPreco(rotaReativada);
-        return rotaReativada;
+        return this.verificarPreco(rotaReativada);
       }
 
       throw new ConflictException(MENSAGENS_ERRO.rotaDuplicada);
     }
 
     const rotaCriada = await this.rotasRepository.criar(novaRota);
-    await this.verificarPreco(rotaCriada);
-    return rotaCriada;
+    return this.verificarPreco(rotaCriada);
   }
 
-  private async verificarPreco(
-    rota: Awaited<ReturnType<RotasRepository['criar']>>,
-  ): Promise<void> {
-    try {
-      await this.verificarPrecoRota.execute(rota);
-    } catch {
-      this.logger.error(
-        JSON.stringify({
-          evento: 'verificacao_preco_imediata_falhou',
-          rotaId: rota.id,
-        }),
-      );
-    }
+  private async verificarPreco(rota: Rota): Promise<RotaComSituacaoCotacao> {
+    const situacaoCotacao =
+      await this.verificarPrecoRota.executarResiliente(rota);
+
+    return { ...rota, situacaoCotacao };
   }
 }

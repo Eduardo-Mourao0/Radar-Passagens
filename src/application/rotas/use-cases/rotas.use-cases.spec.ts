@@ -16,7 +16,10 @@ describe('Casos de uso de rotas', () => {
   let listarRotasUseCase: ListarRotasUseCase;
   let listarHistoricoRotaUseCase: ListarHistoricoRotaUseCase;
   let repositorio: jest.Mocked<RotasRepository>;
-  const verificarPrecoRota = { execute: jest.fn() };
+  const verificarPrecoRota = {
+    execute: jest.fn(),
+    executarResiliente: jest.fn(),
+  };
 
   const rota = {
     id: 'rota-1',
@@ -32,6 +35,7 @@ describe('Casos de uso de rotas', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    verificarPrecoRota.executarResiliente.mockResolvedValue('ATUALIZADA');
     repositorio = {
       buscarPorChave: jest.fn(),
       criar: jest.fn(),
@@ -75,7 +79,7 @@ describe('Casos de uso de rotas', () => {
         dataIda: '2026-12-10',
         dataVolta: '2026-12-20',
       }),
-    ).resolves.toEqual(rota);
+    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'ATUALIZADA' });
     expect(repositorio.criar).toHaveBeenCalledWith({
       chaveMonitoramento: 'BSB:GRU:2026-12-10:2026-12-20',
       usuarioId: rota.usuarioId,
@@ -84,7 +88,7 @@ describe('Casos de uso de rotas', () => {
       dataIda: new Date('2026-12-10T00:00:00'),
       dataVolta: new Date('2026-12-20T00:00:00'),
     });
-    expect(verificarPrecoRota.execute).toHaveBeenCalledWith(rota);
+    expect(verificarPrecoRota.executarResiliente).toHaveBeenCalledWith(rota);
   });
 
   it('rejeita o cadastro de uma rota duplicada', async () => {
@@ -99,7 +103,7 @@ describe('Casos de uso de rotas', () => {
       }),
     ).rejects.toBeInstanceOf(ConflictException);
     expect(repositorio.criar).not.toHaveBeenCalled();
-    expect(verificarPrecoRota.execute).not.toHaveBeenCalled();
+    expect(verificarPrecoRota.executarResiliente).not.toHaveBeenCalled();
   });
 
   it('aplica as regras de datas e aeroportos mesmo fora do controller', async () => {
@@ -127,21 +131,19 @@ describe('Casos de uso de rotas', () => {
         dataIda: '2026-12-10',
         dataVolta: '2026-12-20',
       }),
-    ).resolves.toEqual(rota);
+    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'ATUALIZADA' });
     expect(repositorio.reativar).toHaveBeenCalledWith(
       rotaInativa.id,
       rota.usuarioId,
     );
     expect(repositorio.criar).not.toHaveBeenCalled();
-    expect(verificarPrecoRota.execute).toHaveBeenCalledWith(rota);
+    expect(verificarPrecoRota.executarResiliente).toHaveBeenCalledWith(rota);
   });
 
   it('mantém a nova rota quando a cotação inicial falha', async () => {
     repositorio.buscarPorChave.mockResolvedValue(null);
     repositorio.criar.mockResolvedValue(rota);
-    verificarPrecoRota.execute.mockRejectedValue(
-      new Error('Ignav indisponível'),
-    );
+    verificarPrecoRota.executarResiliente.mockResolvedValue('INDISPONIVEL');
 
     await expect(
       criarRotaUseCase.execute({
@@ -151,7 +153,7 @@ describe('Casos de uso de rotas', () => {
         dataIda: '2026-12-10',
         dataVolta: '2026-12-20',
       }),
-    ).resolves.toEqual(rota);
+    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'INDISPONIVEL' });
   });
 
   it('lista as rotas', async () => {

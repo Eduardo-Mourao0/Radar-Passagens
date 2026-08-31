@@ -21,7 +21,10 @@ describe('ReativarRotaUseCase', () => {
     ativa: false,
     criadoEm: new Date(),
   };
-  const verificarPrecoRota = { execute: jest.fn() };
+  const verificarPrecoRota = {
+    execute: jest.fn(),
+    executarResiliente: jest.fn(),
+  };
   const repositorio: jest.Mocked<RotasRepository> = {
     buscarPorChave: jest.fn(),
     criar: jest.fn(),
@@ -43,6 +46,7 @@ describe('ReativarRotaUseCase', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    verificarPrecoRota.executarResiliente.mockResolvedValue('ATUALIZADA');
     const modulo = await Test.createTestingModule({
       providers: [
         ReativarRotaUseCase,
@@ -63,7 +67,7 @@ describe('ReativarRotaUseCase', () => {
       ativa: true,
     });
     expect(repositorio.reativar).toHaveBeenCalledWith(rota.id, rota.usuarioId);
-    expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
+    expect(verificarPrecoRota.executarResiliente).toHaveBeenCalledWith(
       expect.objectContaining({ id: rota.id, ativa: true }),
     );
   });
@@ -77,7 +81,7 @@ describe('ReativarRotaUseCase', () => {
       ativa: true,
     });
     expect(repositorio.reativar).not.toHaveBeenCalled();
-    expect(verificarPrecoRota.execute).not.toHaveBeenCalled();
+    expect(verificarPrecoRota.executarResiliente).not.toHaveBeenCalled();
   });
 
   it('não reativa uma rota cuja ida já passou', async () => {

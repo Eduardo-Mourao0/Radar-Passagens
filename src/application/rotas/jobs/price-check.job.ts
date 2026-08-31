@@ -1,13 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { CONSULTAR_PRECOS_VOO } from '../ports/consultar-precos-voo.port';
-import type { ConsultarPrecosVoo } from '../ports/consultar-precos-voo.port';
-import { RegistrarHistoricoPrecoUseCase } from '../use-cases/registrar-historico-preco.use-case';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
 import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { UsuariosRepository } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
+import { VerificarPrecoRotaUseCase } from '../use-cases/verificar-preco-rota.use-case';
 
 /**
  * Orquestra as verificações periódicas; regras de negócio permanecem nos use cases.
@@ -20,9 +18,7 @@ export class PriceCheckJob {
 
   constructor(
     @Inject(ROTAS_REPOSITORY) private readonly rotasRepository: RotasRepository,
-    @Inject(CONSULTAR_PRECOS_VOO)
-    private readonly consultarPrecosVoo: ConsultarPrecosVoo,
-    private readonly registrarHistoricoPreco: RegistrarHistoricoPrecoUseCase,
+    private readonly verificarPrecoRota: VerificarPrecoRotaUseCase,
     @Inject(USUARIOS_REPOSITORY)
     private readonly usuariosRepository: UsuariosRepository,
   ) {}
@@ -44,6 +40,12 @@ export class PriceCheckJob {
     }
 
     const rotasPendentes = [...(await this.rotasRepository.listarAtivas())];
+    this.logger.log(
+      JSON.stringify({
+        evento: 'verificacao_precos_iniciada',
+        quantidadeRotas: rotasPendentes.length,
+      }),
+    );
     const usuarios = await this.usuariosRepository.buscarPorIds([
       ...new Set(rotasPendentes.map((rota) => rota.usuarioId)),
     ]);
@@ -60,6 +62,7 @@ export class PriceCheckJob {
         this.processarRotasPendentes(rotasPendentes, usuariosPorId),
       ),
     );
+    this.logger.log(JSON.stringify({ evento: 'verificacao_precos_concluida' }));
   }
 
   private async processarRotasPendentes(
@@ -90,9 +93,9 @@ export class PriceCheckJob {
     usuario: Usuario | undefined,
   ): Promise<void> {
     try {
-      const cotacao = await this.consultarPrecosVoo.consultarMenorPreco(rota);
+      const resultado = await this.verificarPrecoRota.execute(rota, usuario);
 
-      if (!cotacao) {
+      if (!resultado.ofertaEncontrada) {
         this.logger.log(
           JSON.stringify({
             evento: 'nenhuma_oferta_encontrada',
@@ -102,20 +105,11 @@ export class PriceCheckJob {
         return;
       }
 
-      const resultado = await this.registrarHistoricoPreco.execute(
-        {
-          rotaId: rota.id,
-          ...cotacao,
-        },
-        rota,
-        usuario,
-      );
-
       this.logger.log(
         JSON.stringify({
           evento: 'verificacao_preco_concluida',
           rotaId: rota.id,
-          historicoRegistrado: resultado.registrado,
+          historicoRegistrado: resultado.historicoRegistrado,
         }),
       );
     } catch {

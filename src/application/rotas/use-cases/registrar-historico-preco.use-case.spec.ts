@@ -55,6 +55,11 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       moeda: 'BRL',
       companhia: 'LATAM',
     });
+    expect(avaliarAlertaPrecoUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'rota-1' }),
+      expect.objectContaining({ preco: '100.00', companhia: 'LATAM' }),
+      undefined,
+    );
 
     repositorio.registrarHistoricoSeDiferente.mockResolvedValue({
       id: 'h-1',
@@ -75,6 +80,6 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
         { id: 'rota-1', usuarioId: 'usuario-1' } as never,
       ),
     ).resolves.toMatchObject({ registrado: true });
-    expect(avaliarAlertaPrecoUseCase.execute).toHaveBeenCalledTimes(1);
+    expect(avaliarAlertaPrecoUseCase.execute).toHaveBeenCalledTimes(2);
   });
 });

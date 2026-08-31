@@ -11,6 +11,7 @@ import { ListarHistoricoRotaUseCase } from '../../application/rotas/use-cases/li
 import { ListarRotasUseCase } from '../../application/rotas/use-cases/listar-rotas.use-case';
 import { ReativarRotaUseCase } from '../../application/rotas/use-cases/reativar-rota.use-case';
 import { RegistrarHistoricoPrecoUseCase } from '../../application/rotas/use-cases/registrar-historico-preco.use-case';
+import { VerificarPrecoRotaUseCase } from '../../application/rotas/use-cases/verificar-preco-rota.use-case';
 import { ObterLinksCompraRotaUseCase } from '../../application/rotas/use-cases/obter-links-compra-rota.use-case';
 import { ROTAS_REPOSITORY } from '../../domain/rotas/repositories/rotas.repository';
 import { PrismaRotasRepository } from '../../infra/database/prisma/repositories/prisma-rotas.repository';
@@ -34,6 +35,7 @@ import { AutenticacaoModule } from './autenticacao.module';
     ListarRotasUseCase,
     ListarHistoricoRotaUseCase,
     RegistrarHistoricoPrecoUseCase,
+    VerificarPrecoRotaUseCase,
     ObterLinksCompraRotaUseCase,
     PrismaRotasRepository,
     {

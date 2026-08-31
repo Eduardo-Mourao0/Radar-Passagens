@@ -27,44 +27,33 @@ describe('PriceCheckJob', () => {
         .fn()
         .mockResolvedValue([rota, { ...rota, id: 'rota-2' }]),
     };
-    const consultarPrecosVoo = {
-      consultarMenorPreco: jest
+    const verificarPrecoRota = {
+      execute: jest
         .fn()
         .mockRejectedValueOnce(new Error('falha externa'))
         .mockResolvedValueOnce({
-          preco: '350.00',
-          moeda: 'BRL',
-          companhia: 'Azul',
+          ofertaEncontrada: true,
+          historicoRegistrado: true,
         }),
-    };
-    const registrarHistoricoPreco = {
-      execute: jest.fn().mockResolvedValue({ registrado: true }),
     };
     const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
     const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const job = new PriceCheckJob(
       rotasRepository,
-      consultarPrecosVoo,
-      registrarHistoricoPreco,
+      verificarPrecoRota,
       usuariosRepository,
     );
 
     await job.executar();
 
-    expect(consultarPrecosVoo.consultarMenorPreco).toHaveBeenCalledTimes(2);
+    expect(verificarPrecoRota.execute).toHaveBeenCalledTimes(2);
     expect(usuariosRepository.buscarPorIds).toHaveBeenCalledWith(['usuario-1']);
-    expect(registrarHistoricoPreco.execute).toHaveBeenCalledWith(
-      {
-        rotaId: 'rota-2',
-        preco: '350.00',
-        moeda: 'BRL',
-        companhia: 'Azul',
-      },
+    expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'rota-2' }),
       expect.objectContaining({ id: 'usuario-1' }),
     );
     expect(errorLog).toHaveBeenCalledTimes(1);
-    expect(infoLog).toHaveBeenCalledTimes(1);
+    expect(infoLog).toHaveBeenCalledTimes(3);
     errorLog.mockRestore();
     infoLog.mockRestore();
   });
@@ -80,8 +69,8 @@ describe('PriceCheckJob', () => {
     };
     let verificacoesEmAndamento = 0;
     let maiorConcorrencia = 0;
-    const consultarPrecosVoo = {
-      consultarMenorPreco: jest.fn().mockImplementation(async () => {
+    const verificarPrecoRota = {
+      execute: jest.fn().mockImplementation(async () => {
         verificacoesEmAndamento += 1;
         maiorConcorrencia = Math.max(
           maiorConcorrencia,
@@ -91,23 +80,19 @@ describe('PriceCheckJob', () => {
         await new Promise<void>((resolve) => setTimeout(resolve, 10));
         verificacoesEmAndamento -= 1;
 
-        return { preco: '350.00', moeda: 'BRL', companhia: 'Azul' };
+        return { ofertaEncontrada: true, historicoRegistrado: true };
       }),
-    };
-    const registrarHistoricoPreco = {
-      execute: jest.fn().mockResolvedValue({ registrado: true }),
     };
     const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const job = new PriceCheckJob(
       rotasRepository,
-      consultarPrecosVoo,
-      registrarHistoricoPreco,
+      verificarPrecoRota,
       usuariosRepository,
     );
 
     await job.executar();
 
-    expect(consultarPrecosVoo.consultarMenorPreco).toHaveBeenCalledTimes(6);
+    expect(verificarPrecoRota.execute).toHaveBeenCalledTimes(6);
     expect(maiorConcorrencia).toBe(5);
     infoLog.mockRestore();
   });
@@ -117,16 +102,17 @@ describe('PriceCheckJob', () => {
       desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
       listarAtivas: jest.fn().mockResolvedValue([rota]),
     };
-    const consultarPrecosVoo = {
-      consultarMenorPreco: jest.fn().mockResolvedValue(null),
+    const verificarPrecoRota = {
+      execute: jest.fn().mockResolvedValue({
+        ofertaEncontrada: false,
+        historicoRegistrado: false,
+      }),
     };
-    const registrarHistoricoPreco = { execute: jest.fn() };
     const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     const job = new PriceCheckJob(
       rotasRepository,
-      consultarPrecosVoo,
-      registrarHistoricoPreco,
+      verificarPrecoRota,
       usuariosRepository,
     );
 
@@ -139,7 +125,10 @@ describe('PriceCheckJob', () => {
       }),
     );
     expect(warnLog).not.toHaveBeenCalled();
-    expect(registrarHistoricoPreco.execute).not.toHaveBeenCalled();
+    expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
+      rota,
+      expect.anything(),
+    );
     infoLog.mockRestore();
     warnLog.mockRestore();
   });
@@ -149,18 +138,19 @@ describe('PriceCheckJob', () => {
       desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
       listarAtivas: jest.fn().mockResolvedValue([rota]),
     };
-    const consultarPrecosVoo = {
-      consultarMenorPreco: jest.fn().mockResolvedValue(null),
+    const verificarPrecoRota = {
+      execute: jest.fn().mockResolvedValue({
+        ofertaEncontrada: false,
+        historicoRegistrado: false,
+      }),
     };
-    const registrarHistoricoPreco = { execute: jest.fn() };
     const repositorioSemUsuario = {
       buscarPorIds: jest.fn().mockResolvedValue([]),
     };
     const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     const job = new PriceCheckJob(
       rotasRepository,
-      consultarPrecosVoo,
-      registrarHistoricoPreco,
+      verificarPrecoRota,
       repositorioSemUsuario,
     );
 
@@ -181,13 +171,11 @@ describe('PriceCheckJob', () => {
       desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(2),
       listarAtivas: jest.fn().mockResolvedValue([]),
     };
-    const consultarPrecosVoo = { consultarMenorPreco: jest.fn() };
-    const registrarHistoricoPreco = { execute: jest.fn() };
+    const verificarPrecoRota = { execute: jest.fn() };
     const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
     const job = new PriceCheckJob(
       rotasRepository,
-      consultarPrecosVoo,
-      registrarHistoricoPreco,
+      verificarPrecoRota,
       usuariosRepository,
     );
 

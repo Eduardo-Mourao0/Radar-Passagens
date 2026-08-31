@@ -7,6 +7,7 @@ import {
   RotasRepository,
 } from '../../../domain/rotas/repositories/rotas.repository';
 import { ReativarRotaUseCase } from './reativar-rota.use-case';
+import { VerificarPrecoRotaUseCase } from './verificar-preco-rota.use-case';
 
 describe('ReativarRotaUseCase', () => {
   const rota = {
@@ -19,6 +20,10 @@ describe('ReativarRotaUseCase', () => {
     dataVolta: new Date('2026-12-12'),
     ativa: false,
     criadoEm: new Date(),
+  };
+  const verificarPrecoRota = {
+    execute: jest.fn(),
+    executarResiliente: jest.fn(),
   };
   const repositorio: jest.Mocked<RotasRepository> = {
     buscarPorChave: jest.fn(),
@@ -41,10 +46,12 @@ describe('ReativarRotaUseCase', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    verificarPrecoRota.executarResiliente.mockResolvedValue('ATUALIZADA');
     const modulo = await Test.createTestingModule({
       providers: [
         ReativarRotaUseCase,
         { provide: ROTAS_REPOSITORY, useValue: repositorio },
+        { provide: VerificarPrecoRotaUseCase, useValue: verificarPrecoRota },
       ],
     }).compile();
     useCase = modulo.get(ReativarRotaUseCase);
@@ -60,6 +67,9 @@ describe('ReativarRotaUseCase', () => {
       ativa: true,
     });
     expect(repositorio.reativar).toHaveBeenCalledWith(rota.id, rota.usuarioId);
+    expect(verificarPrecoRota.executarResiliente).toHaveBeenCalledWith(
+      expect.objectContaining({ id: rota.id, ativa: true }),
+    );
   });
 
   it('não altera uma rota que já está ativa', async () => {
@@ -71,6 +81,7 @@ describe('ReativarRotaUseCase', () => {
       ativa: true,
     });
     expect(repositorio.reativar).not.toHaveBeenCalled();
+    expect(verificarPrecoRota.executarResiliente).not.toHaveBeenCalled();
   });
 
   it('não reativa uma rota cuja ida já passou', async () => {

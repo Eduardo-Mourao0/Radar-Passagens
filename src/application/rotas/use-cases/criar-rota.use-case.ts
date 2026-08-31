@@ -1,18 +1,23 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
-import { RotaEntity } from '../../../domain/rotas/entities/rota.entity';
+import { Rota, RotaEntity } from '../../../domain/rotas/entities/rota.entity';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
 import { CriarRotaCommand } from '../commands/criar-rota.command';
+import {
+  RotaComSituacaoCotacao,
+  VerificarPrecoRotaUseCase,
+} from './verificar-preco-rota.use-case';
 
 @Injectable()
 export class CriarRotaUseCase {
   constructor(
     @Inject(ROTAS_REPOSITORY)
     private readonly rotasRepository: RotasRepository,
+    private readonly verificarPrecoRota: VerificarPrecoRotaUseCase,
   ) {}
 
-  async execute(comando: CriarRotaCommand) {
+  async execute(comando: CriarRotaCommand): Promise<RotaComSituacaoCotacao> {
     const novaRota = {
       ...RotaEntity.criarNova(comando),
       usuarioId: comando.usuarioId,
@@ -25,15 +30,24 @@ export class CriarRotaUseCase {
 
     if (rotaExistente) {
       if (!rotaExistente.ativa) {
-        return this.rotasRepository.reativar(
+        const rotaReativada = await this.rotasRepository.reativar(
           rotaExistente.id,
           comando.usuarioId,
         );
+        return this.verificarPreco(rotaReativada);
       }
 
       throw new ConflictException(MENSAGENS_ERRO.rotaDuplicada);
     }
 
-    return this.rotasRepository.criar(novaRota);
+    const rotaCriada = await this.rotasRepository.criar(novaRota);
+    return this.verificarPreco(rotaCriada);
+  }
+
+  private async verificarPreco(rota: Rota): Promise<RotaComSituacaoCotacao> {
+    const situacaoCotacao =
+      await this.verificarPrecoRota.executarResiliente(rota);
+
+    return { ...rota, situacaoCotacao };
   }
 }

@@ -47,6 +47,14 @@ const respostaLinksCompraSchema = z.object({
         z.object({
           provider_name: z.string().trim().min(1),
           provider_type: z.enum(['airline', 'third_party']),
+          price: z
+            .object({
+              amount: z.number().finite().positive(),
+              currency: z.literal('BRL'),
+              status: z.literal('verified'),
+            })
+            .nullable()
+            .optional(),
           url: z.string().trim().min(1),
         }),
       ),
@@ -107,38 +115,41 @@ export class IgnavService implements ConsultarPrecosVoo {
         );
       }
 
-      const menorOferta = resultado.data.itineraries.reduce(
-        (menor, oferta) => {
-          if (oferta.price.status !== 'verified') {
-            return menor;
-          }
-
-          return !menor || oferta.price.amount < menor.price.amount
-            ? oferta
-            : menor;
-        },
-        undefined as (typeof resultado.data.itineraries)[number] | undefined,
-      );
-
-      if (!menorOferta) {
-        return null;
-      }
-
-      const companhiaIdentificada = this.identificarCompanhia(menorOferta);
-      if (!companhiaIdentificada) {
-        this.logger.warn(
-          JSON.stringify({
-            evento: 'ignav_companhia_nao_identificada',
-          }),
+      const ofertasVerificadas = resultado.data.itineraries
+        .filter(
+          (oferta) =>
+            oferta.price.status === 'verified' && oferta.ignav_id !== undefined,
+        )
+        .sort(
+          (ofertaA, ofertaB) => ofertaA.price.amount - ofertaB.price.amount,
         );
+      let menorCotacao: CotacaoDeVoo | null = null;
+
+      for (const oferta of ofertasVerificadas) {
+        const links = await this.obterLinksCompra(oferta.ignav_id!);
+        const menorLink = links.reduce<LinkCompra | null>(
+          (menor, link) =>
+            !menor || Number(link.preco) < Number(menor.preco) ? link : menor,
+          null,
+        );
+
+        if (
+          !menorLink ||
+          (menorCotacao &&
+            Number(menorLink.preco) >= Number(menorCotacao.preco))
+        ) {
+          continue;
+        }
+
+        menorCotacao = {
+          preco: menorLink.preco,
+          moeda: menorLink.moeda,
+          ignavId: oferta.ignav_id,
+          companhia: menorLink.fornecedor,
+        };
       }
 
-      return {
-        preco: menorOferta.price.amount.toFixed(2),
-        moeda: menorOferta.price.currency,
-        ...(menorOferta.ignav_id ? { ignavId: menorOferta.ignav_id } : {}),
-        companhia: companhiaIdentificada ?? 'Companhia não identificada',
-      };
+      return menorCotacao;
     } catch (erro: unknown) {
       if (erro instanceof ServiceUnavailableException) {
         throw erro;
@@ -180,11 +191,19 @@ export class IgnavService implements ConsultarPrecosVoo {
         );
       }
       const links = resultado.data.booking_options.flatMap((opcao) =>
-        opcao.links.map((link) => ({
-          fornecedor: link.provider_name,
-          tipoFornecedor: link.provider_type,
-          url: link.url,
-        })),
+        opcao.links
+          .filter(
+            (link) =>
+              link.provider_type === 'airline' &&
+              link.price?.status === 'verified',
+          )
+          .map((link) => ({
+            fornecedor: link.provider_name,
+            tipoFornecedor: link.provider_type,
+            preco: link.price!.amount.toFixed(2),
+            moeda: link.price!.currency,
+            url: link.url,
+          })),
       );
       if (links.length === 0) {
         this.logger.warn(
@@ -222,25 +241,6 @@ export class IgnavService implements ConsultarPrecosVoo {
     }
 
     return 'inesperada';
-  }
-
-  private identificarCompanhia(
-    oferta: z.infer<typeof respostaIgnavSchema>['itineraries'][number],
-  ): string | null {
-    if (oferta.outbound.carrier) {
-      return oferta.outbound.carrier;
-    }
-
-    const segmentoComCompanhia = oferta.outbound.segments.find(
-      (segmento) =>
-        segmento.operating_carrier_name || segmento.marketing_carrier_code,
-    );
-
-    return (
-      segmentoComCompanhia?.operating_carrier_name ??
-      segmentoComCompanhia?.marketing_carrier_code ??
-      null
-    );
   }
 
   private formatarData(data: Date): string {

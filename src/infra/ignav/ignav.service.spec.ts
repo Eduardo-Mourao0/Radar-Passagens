@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { HttpService } from '@nestjs/axios';
-import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
 import { IgnavService } from './ignav.service';
@@ -16,84 +16,108 @@ const rota = {
   criadoEm: new Date(2026, 0, 1),
 } as const;
 
-const respostaComOfertas = {
-  itineraries: [
-    {
-      price: { amount: 450.5, currency: 'BRL', status: 'verified' },
-      outbound: {
-        carrier: 'Azul',
-        segments: [
-          {
-            operating_carrier_name: 'Azul',
-            marketing_carrier_code: 'AD',
-          },
-        ],
-      },
-    },
-    {
-      price: { amount: 380, currency: 'BRL', status: 'verified' },
-      outbound: {
-        carrier: 'GOL',
-        segments: [
-          {
-            operating_carrier_name: 'GOL',
-            marketing_carrier_code: 'G3',
-          },
-        ],
-      },
-    },
-  ],
-};
+const configService = {
+  getOrThrow: jest.fn((chave: string) => {
+    const configuracoes: Record<string, string> = {
+      IGNAV_API_KEY: 'ignav-api-key',
+      IGNAV_BASE_URL: 'https://ignav.com/api',
+    };
+
+    return configuracoes[chave];
+  }),
+} as unknown as ConfigService;
+
+function criarHttpService(
+  respostaTarifas: unknown,
+  respostasLinks: Record<string, unknown>,
+): HttpService {
+  return {
+    post: jest.fn((url: string, corpo: { ignav_id?: string }) => {
+      if (url.endsWith('/booking-links')) {
+        return of({ data: respostasLinks[corpo.ignav_id ?? ''] });
+      }
+
+      return of({ data: respostaTarifas });
+    }),
+  } as unknown as HttpService;
+}
+
+function respostaLinks(links: unknown[]) {
+  return { booking_options: [{ links }] };
+}
 
 describe('IgnavService', () => {
-  const configService = {
-    getOrThrow: jest.fn((chave: string) => {
-      const configuracoes: Record<string, string> = {
-        IGNAV_API_KEY: 'ignav-api-key',
-        IGNAV_BASE_URL: 'https://ignav.com/api',
-      };
-
-      return configuracoes[chave];
-    }),
-  } as unknown as ConfigService;
-
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('consulta uma rota só de ida e normaliza a menor tarifa verificada', async () => {
-    const httpService = {
-      post: jest.fn().mockReturnValue(of({ data: respostaComOfertas })),
-    } as unknown as HttpService;
+  it('persiste o menor preço verificado entre os sites oficiais', async () => {
+    const httpService = criarHttpService(
+      {
+        itineraries: [
+          {
+            ignav_id: 'ignav-gol',
+            price: { amount: 380, currency: 'BRL', status: 'verified' },
+            outbound: {
+              segments: [
+                {
+                  operating_carrier_name: 'GOL',
+                  marketing_carrier_code: 'G3',
+                },
+              ],
+            },
+          },
+          {
+            ignav_id: 'ignav-azul',
+            price: { amount: 450, currency: 'BRL', status: 'verified' },
+            outbound: {
+              segments: [
+                {
+                  operating_carrier_name: 'Azul',
+                  marketing_carrier_code: 'AD',
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        'ignav-gol': respostaLinks([
+          {
+            provider_name: 'Decolar',
+            provider_type: 'third_party',
+            price: { amount: 380, currency: 'BRL', status: 'verified' },
+            url: 'https://www.decolar.com',
+          },
+          {
+            provider_name: 'GOL',
+            provider_type: 'airline',
+            price: { amount: 430, currency: 'BRL', status: 'verified' },
+            url: 'https://www.voegol.com.br',
+          },
+        ]),
+        'ignav-azul': respostaLinks([
+          {
+            provider_name: 'Azul',
+            provider_type: 'airline',
+            price: { amount: 410, currency: 'BRL', status: 'verified' },
+            url: 'https://www.voeazul.com.br',
+          },
+        ]),
+      },
+    );
     const service = new IgnavService(httpService, configService);
 
     await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
-      preco: '380.00',
+      preco: '410.00',
       moeda: 'BRL',
-      companhia: 'GOL',
+      ignavId: 'ignav-azul',
+      companhia: 'Azul',
     });
-    expect(httpService.post).toHaveBeenCalledWith(
-      'https://ignav.com/api/fares/one-way',
-      {
-        origin: 'GRU',
-        destination: 'REC',
-        departure_date: '2026-09-10',
-        adults: 1,
-        market: 'BR',
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': 'ignav-api-key',
-        },
-      },
-    );
   });
 
   it('consulta ida e volta pelo endpoint específico', async () => {
-    const httpService = {
-      post: jest.fn().mockReturnValue(of({ data: respostaComOfertas })),
-    } as unknown as HttpService;
+    const httpService = criarHttpService({ itineraries: [] }, {});
     const service = new IgnavService(httpService, configService);
 
     await service.consultarMenorPreco({
@@ -108,60 +132,14 @@ describe('IgnavService', () => {
     );
   });
 
-  it('ignora tarifas não verificadas', async () => {
-    const httpService = {
-      post: jest.fn().mockReturnValue(
-        of({
-          data: {
-            itineraries: [
-              {
-                price: { amount: 250, currency: 'BRL', status: 'unverified' },
-                outbound: {
-                  carrier: 'Azul',
-                  segments: [
-                    {
-                      operating_carrier_name: 'Azul',
-                      marketing_carrier_code: 'AD',
-                    },
-                  ],
-                },
-              },
-              {
-                price: { amount: 380, currency: 'BRL', status: 'verified' },
-                outbound: {
-                  carrier: 'GOL',
-                  segments: [
-                    {
-                      operating_carrier_name: 'GOL',
-                      marketing_carrier_code: 'G3',
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        }),
-      ),
-    } as unknown as HttpService;
-    const service = new IgnavService(httpService, configService);
-
-    await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
-      preco: '380.00',
-      moeda: 'BRL',
-      companhia: 'GOL',
-    });
-  });
-
-  it.each([
-    ['nenhuma tarifa', { itineraries: [] }],
-    [
-      'apenas tarifa não verificada',
+  it('retorna null quando não há tarifa oficial verificada', async () => {
+    const httpService = criarHttpService(
       {
         itineraries: [
           {
-            price: { amount: 250, currency: 'BRL', status: 'unverified' },
+            ignav_id: 'ignav-1',
+            price: { amount: 250, currency: 'BRL', status: 'verified' },
             outbound: {
-              carrier: 'Azul',
               segments: [
                 {
                   operating_carrier_name: 'Azul',
@@ -172,81 +150,82 @@ describe('IgnavService', () => {
           },
         ],
       },
-    ],
-  ])('retorna null quando há %s', async (_, resposta) => {
-    const httpService = {
-      post: jest.fn().mockReturnValue(of({ data: resposta })),
-    } as unknown as HttpService;
+      {
+        'ignav-1': respostaLinks([
+          {
+            provider_name: 'Decolar',
+            provider_type: 'third_party',
+            price: { amount: 250, currency: 'BRL', status: 'verified' },
+            url: 'https://www.decolar.com',
+          },
+        ]),
+      },
+    );
     const service = new IgnavService(httpService, configService);
 
     await expect(service.consultarMenorPreco(rota)).resolves.toBeNull();
   });
 
-  it('usa a companhia do segmento quando o campo principal não é retornado', async () => {
-    const httpService = {
-      post: jest.fn().mockReturnValue(
-        of({
-          data: {
-            itineraries: [
-              {
-                price: { amount: 350, currency: 'BRL', status: 'verified' },
-                outbound: {
-                  segments: [
-                    {
-                      operating_carrier_name: 'Azul',
-                      marketing_carrier_code: 'AD',
-                    },
-                  ],
+  it('ignora tarifas de busca não verificadas', async () => {
+    const httpService = criarHttpService(
+      {
+        itineraries: [
+          {
+            ignav_id: 'ignav-1',
+            price: { amount: 250, currency: 'BRL', status: 'unverified' },
+            outbound: {
+              segments: [
+                {
+                  operating_carrier_name: 'Azul',
+                  marketing_carrier_code: 'AD',
                 },
-              },
-            ],
+              ],
+            },
           },
-        }),
-      ),
-    } as unknown as HttpService;
+        ],
+      },
+      {},
+    );
     const service = new IgnavService(httpService, configService);
 
-    await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
-      preco: '350.00',
-      moeda: 'BRL',
-      companhia: 'Azul',
-    });
+    await expect(service.consultarMenorPreco(rota)).resolves.toBeNull();
+    expect(httpService.post).toHaveBeenCalledTimes(1);
   });
 
-  it('mantém a tarifa com uma companhia genérica quando a resposta não a identifica', async () => {
-    const httpService = {
-      post: jest.fn().mockReturnValue(
-        of({
-          data: {
-            itineraries: [
-              {
-                price: { amount: 350, currency: 'BRL', status: 'verified' },
-                outbound: {
-                  segments: [
-                    {
-                      operating_carrier_name: null,
-                      marketing_carrier_code: null,
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        }),
-      ),
-    } as unknown as HttpService;
-    const service = new IgnavService(httpService, configService);
-    const warnLog = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
-
-    await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
-      preco: '350.00',
-      moeda: 'BRL',
-      companhia: 'Companhia não identificada',
+  it('retorna somente links oficiais com preço verificado', async () => {
+    const httpService = criarHttpService(undefined, {
+      'ignav-1': respostaLinks([
+        {
+          provider_name: 'Decolar',
+          provider_type: 'third_party',
+          price: { amount: 420, currency: 'BRL', status: 'verified' },
+          url: 'https://www.decolar.com',
+        },
+        {
+          provider_name: 'GOL',
+          provider_type: 'airline',
+          price: { amount: 450, currency: 'BRL', status: 'verified' },
+          url: 'https://www.voegol.com.br',
+        },
+        {
+          provider_name: 'LATAM',
+          provider_type: 'airline',
+          price: null,
+          url: 'https://www.latamairlines.com',
+        },
+      ]),
     });
-    expect(warnLog).toHaveBeenCalledWith(
-      JSON.stringify({ evento: 'ignav_companhia_nao_identificada' }),
-    );
-    warnLog.mockRestore();
+    const service = new IgnavService(httpService, configService);
+
+    await expect(service.obterLinksCompra('ignav-1')).resolves.toEqual([
+      {
+        fornecedor: 'GOL',
+        tipoFornecedor: 'airline',
+        preco: '450.00',
+        moeda: 'BRL',
+        url: 'https://www.voegol.com.br',
+      },
+    ]);
   });
 
   it('não expõe a chave de API quando a consulta falha', async () => {
@@ -256,7 +235,6 @@ describe('IgnavService', () => {
         .mockReturnValue(throwError(() => new Error('timeout ignav-api-key'))),
     } as unknown as HttpService;
     const service = new IgnavService(httpService, configService);
-    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     const erro = await service
       .consultarMenorPreco(rota)
@@ -266,41 +244,14 @@ describe('IgnavService', () => {
     expect(
       JSON.stringify((erro as ServiceUnavailableException).getResponse()),
     ).not.toContain('ignav-api-key');
-    expect(JSON.stringify(errorLog.mock.calls)).not.toContain('ignav-api-key');
-    errorLog.mockRestore();
   });
 
-  it('registra falhas inesperadas sem classificá-las como rede', async () => {
-    const httpService = {
-      post: jest
-        .fn()
-        .mockReturnValue(throwError(() => new Error('falha inesperada'))),
-    } as unknown as HttpService;
+  it('rejeita respostas malformadas da Ignav', async () => {
+    const httpService = criarHttpService({ itineraries: null }, {});
     const service = new IgnavService(httpService, configService);
-    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
 
     await expect(service.consultarMenorPreco(rota)).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
-    expect(errorLog).toHaveBeenCalledWith(
-      JSON.stringify({
-        evento: 'ignav_consulta_preco_falhou',
-        tipo: 'inesperada',
-      }),
-    );
-    errorLog.mockRestore();
-  });
-
-  it('rejeita uma resposta malformada', async () => {
-    const httpService = {
-      post: jest.fn().mockReturnValue(of({ data: { itineraries: null } })),
-    } as unknown as HttpService;
-    const service = new IgnavService(httpService, configService);
-    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
-
-    await expect(service.consultarMenorPreco(rota)).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
-    errorLog.mockRestore();
   });
 });

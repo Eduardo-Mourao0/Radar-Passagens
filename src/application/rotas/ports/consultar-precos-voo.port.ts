@@ -12,6 +12,8 @@ export type CotacaoDeVoo = Readonly<{
 export type LinkCompra = Readonly<{
   fornecedor: string;
   tipoFornecedor: 'airline' | 'third_party';
+  preco: string;
+  moeda: string;
   url: string;
 }>;
 

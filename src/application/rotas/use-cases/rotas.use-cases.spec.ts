@@ -47,7 +47,7 @@ describe('Casos de uso de rotas', () => {
       desativarRotasComDataIdaPassada: jest.fn(),
       buscarPorId: jest.fn(),
       listarHistorico: jest.fn(),
-      registrarHistoricoSeDiferente: jest.fn(),
+      registrarHistorico: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({

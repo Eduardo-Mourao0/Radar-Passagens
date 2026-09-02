@@ -27,19 +27,13 @@ describe('HistoricoPrecoEntity', () => {
     });
   });
 
-  it('normaliza o preço para duas casas decimais antes de comparar', () => {
+  it('normaliza o preço para duas casas decimais', () => {
     const novoHistorico = HistoricoPrecoEntity.criar({
       ...dados,
       preco: '100',
     });
 
     expect(novoHistorico.preco).toBe('100.00');
-    expect(
-      HistoricoPrecoEntity.temMesmoValor(
-        { preco: '100.00', moeda: 'BRL', companhia: 'LATAM' },
-        novoHistorico,
-      ),
-    ).toBe(true);
   });
 
   it('normaliza espaços internos no nome da companhia', () => {
@@ -59,21 +53,6 @@ describe('HistoricoPrecoEntity', () => {
       );
     },
   );
-
-  it('compara os campos monitorados do histórico', () => {
-    expect(
-      HistoricoPrecoEntity.temMesmoValor(
-        { preco: '1250.50', moeda: 'BRL', companhia: 'LATAM' },
-        dados,
-      ),
-    ).toBe(true);
-    expect(
-      HistoricoPrecoEntity.temMesmoValor(
-        { preco: '1250.50', moeda: 'BRL', companhia: 'GOL' },
-        dados,
-      ),
-    ).toBe(false);
-  });
 
   it.each([
     ['uma companhia longa demais', 'A'.repeat(101)],

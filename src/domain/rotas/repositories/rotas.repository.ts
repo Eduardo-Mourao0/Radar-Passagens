@@ -27,7 +27,5 @@ export interface RotasRepository {
   buscarAlertaPreco(rotaId: string): Promise<AlertaPreco | null>;
   salvarAlertaPreco(dados: NovoAlertaPreco): Promise<AlertaPreco>;
   atualizarAlertaDisparado(id: string, disparado: boolean): Promise<void>;
-  registrarHistoricoSeDiferente(
-    dados: NovoHistoricoPreco,
-  ): Promise<HistoricoPreco | null>;
+  registrarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco>;
 }

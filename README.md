@@ -2,7 +2,7 @@
 
 Backend para cadastrar rotas aéreas e manter o histórico de preços de passagens. O projeto é construído em NestJS, com PostgreSQL e Prisma, e foi organizado em camadas para manter as regras de negócio independentes de HTTP e banco de dados.
 
-> A integração com a Ignav consulta tarifas verificadas e o job agendado registra o menor preço encontrado a cada seis horas.
+> A integração com a Ignav consulta tarifas verificadas e o job agendado registra o menor preço encontrado às 00h e 12h, no horário de Brasília.
 
 ## Tecnologias
 
@@ -241,7 +241,7 @@ O alerta é entregue pelo Telegram. A regra foi isolada do canal de entrega, per
 
 ## Dados persistidos
 
-Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada `HistoricoPreco` pertence a uma rota e armazena preço decimal, moeda, companhia e horário da coleta. Uma rota pode ter um `AlertaPreco`, com preço-alvo e o estado do último disparo.
+Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada coleta bem-sucedida gera um `HistoricoPreco`, mesmo quando preço, moeda e companhia não variam. O histórico armazena preço decimal, moeda, companhia e horário da coleta. Uma rota pode ter um `AlertaPreco`, com preço-alvo e o estado do último disparo.
 
 O histórico usa o índice `(rotaId, coletadoEm DESC)` para consultas eficientes dos registros mais recentes.
 

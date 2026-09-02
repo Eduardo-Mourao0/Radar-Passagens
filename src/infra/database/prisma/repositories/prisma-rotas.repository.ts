@@ -149,43 +149,16 @@ export class PrismaRotasRepository implements RotasRepository {
     });
   }
 
-  async registrarHistoricoSeDiferente(
-    dados: NovoHistoricoPreco,
-  ): Promise<HistoricoPreco | null> {
+  async registrarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco> {
     const historico = await this.prisma.$transaction(async (transacao) => {
       await transacao.$executeRaw`
         SELECT pg_advisory_xact_lock(hashtextextended(${dados.rotaId}, 0))
       `;
 
-      const ultimoHistorico = await transacao.historicoPreco.findFirst({
-        where: { rotaId: dados.rotaId },
-        orderBy: { coletadoEm: 'desc' },
-      });
-
-      const ultimoHistoricoMapeado = ultimoHistorico
-        ? this.mapearHistorico(ultimoHistorico)
-        : null;
-
-      if (
-        ultimoHistorico &&
-        ultimoHistoricoMapeado &&
-        HistoricoPrecoEntity.temMesmoValor(ultimoHistoricoMapeado, dados)
-      ) {
-        const ignavId = dados.ignavId?.trim();
-        if (ignavId && ignavId !== ultimoHistorico.ignavId) {
-          await transacao.historicoPreco.update({
-            where: { id: ultimoHistorico.id },
-            data: { ignavId },
-          });
-        }
-
-        return null;
-      }
-
       return transacao.historicoPreco.create({ data: dados });
     });
 
-    return historico ? this.mapearHistorico(historico) : null;
+    return this.mapearHistorico(historico);
   }
 
   private mapearRota(rota: PrismaRota): Rota {

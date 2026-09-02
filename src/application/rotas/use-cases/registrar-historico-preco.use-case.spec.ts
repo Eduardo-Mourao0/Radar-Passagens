@@ -8,7 +8,7 @@ import { RegistrarHistoricoPrecoUseCase } from './registrar-historico-preco.use-
 import { AvaliarAlertaPrecoUseCase } from './avaliar-alerta-preco.use-case';
 
 describe('RegistrarHistoricoPrecoUseCase', () => {
-  it('registra apenas quando a coleta mudou', async () => {
+  it('registra cada coleta, mesmo quando a cotação não mudou', async () => {
     const repositorio: jest.Mocked<RotasRepository> = {
       buscarPorChave: jest.fn(),
       criar: jest.fn(),
@@ -23,7 +23,15 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       buscarAlertaPreco: jest.fn(),
       salvarAlertaPreco: jest.fn(),
       atualizarAlertaDisparado: jest.fn(),
-      registrarHistoricoSeDiferente: jest.fn().mockResolvedValue(null),
+      registrarHistorico: jest.fn().mockResolvedValue({
+        id: 'h-1',
+        rotaId: 'rota-1',
+        preco: '100.00',
+        moeda: 'BRL',
+        companhia: 'LATAM',
+        ignavId: null,
+        coletadoEm: new Date(),
+      }),
     };
     const avaliarAlertaPrecoUseCase = { execute: jest.fn() };
     const module = await Test.createTestingModule({
@@ -48,8 +56,8 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
         },
         { id: 'rota-1', usuarioId: 'usuario-1' } as never,
       ),
-    ).resolves.toEqual({ registrado: false });
-    expect(repositorio.registrarHistoricoSeDiferente).toHaveBeenCalledWith({
+    ).resolves.toMatchObject({ registrado: true });
+    expect(repositorio.registrarHistorico).toHaveBeenCalledWith({
       rotaId: 'rota-1',
       preco: '100.00',
       moeda: 'BRL',
@@ -62,25 +70,18 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       { horarioIda: undefined, horarioVolta: undefined, urlCompra: undefined },
     );
 
-    repositorio.registrarHistoricoSeDiferente.mockResolvedValue({
-      id: 'h-1',
-      rotaId: 'rota-1',
-      preco: '99.90',
-      moeda: 'BRL',
-      companhia: 'LATAM',
-      coletadoEm: new Date(),
-    });
     await expect(
       useCase.execute(
         {
           rotaId: 'rota-1',
-          preco: '99.90',
+          preco: '100.00',
           moeda: 'BRL',
           companhia: 'LATAM',
         },
         { id: 'rota-1', usuarioId: 'usuario-1' } as never,
       ),
     ).resolves.toMatchObject({ registrado: true });
+    expect(repositorio.registrarHistorico).toHaveBeenCalledTimes(2);
     expect(avaliarAlertaPrecoUseCase.execute).toHaveBeenCalledTimes(2);
   });
 
@@ -99,7 +100,15 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       buscarAlertaPreco: jest.fn(),
       salvarAlertaPreco: jest.fn(),
       atualizarAlertaDisparado: jest.fn(),
-      registrarHistoricoSeDiferente: jest.fn().mockResolvedValue(null),
+      registrarHistorico: jest.fn().mockResolvedValue({
+        id: 'h-1',
+        rotaId: 'rota-1',
+        preco: '100.00',
+        moeda: 'BRL',
+        companhia: 'LATAM',
+        ignavId: null,
+        coletadoEm: new Date(),
+      }),
     };
     const avaliarAlertaPrecoUseCase = { execute: jest.fn() };
     const module = await Test.createTestingModule({
@@ -127,7 +136,7 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       { id: 'rota-1', usuarioId: 'usuario-1' } as never,
     );
 
-    expect(repositorio.registrarHistoricoSeDiferente).toHaveBeenCalledWith({
+    expect(repositorio.registrarHistorico).toHaveBeenCalledWith({
       rotaId: 'rota-1',
       preco: '100.00',
       moeda: 'BRL',

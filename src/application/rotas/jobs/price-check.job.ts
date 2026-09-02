@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
 import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
@@ -8,6 +8,7 @@ import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
 import { VerificarPrecoRotaUseCase } from '../use-cases/verificar-preco-rota.use-case';
 
 const FUSO_HORARIO_BRASILIA = 'America/Sao_Paulo';
+const CRON_DUAS_VEZES_AO_DIA = '0 0,12 * * *';
 
 /**
  * Orquestra as verificações periódicas; regras de negócio permanecem nos use cases.
@@ -25,7 +26,7 @@ export class PriceCheckJob {
     private readonly usuariosRepository: UsuariosRepository,
   ) {}
 
-  @Cron(CronExpression.EVERY_12_HOURS, {
+  @Cron(CRON_DUAS_VEZES_AO_DIA, {
     timeZone: FUSO_HORARIO_BRASILIA,
   })
   async executar(): Promise<void> {

@@ -150,7 +150,13 @@ export class PrismaRotasRepository implements RotasRepository {
   }
 
   async registrarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco> {
-    const historico = await this.prisma.historicoPreco.create({ data: dados });
+    const historico = await this.prisma.$transaction(async (transacao) => {
+      await transacao.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtextextended(${dados.rotaId}, 0))
+      `;
+
+      return transacao.historicoPreco.create({ data: dados });
+    });
 
     return this.mapearHistorico(historico);
   }

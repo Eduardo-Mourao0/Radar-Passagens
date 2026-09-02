@@ -67,10 +67,17 @@ describe('PrismaRotasRepository', () => {
       ignavId: 'ignav-novo',
       coletadoEm: new Date(2026, 0, 1),
     };
-    const prismaMock = {
+    const transacao = {
+      $executeRaw: jest.fn(),
       historicoPreco: {
         create: jest.fn().mockResolvedValue(historicoCriado),
       },
+    };
+    const prismaMock = {
+      $transaction: jest.fn(
+        async (executar: (cliente: typeof transacao) => Promise<unknown>) =>
+          executar(transacao),
+      ),
     };
     const prisma = prismaMock as unknown as PrismaService;
     const repositorio = new PrismaRotasRepository(prisma);
@@ -94,8 +101,9 @@ describe('PrismaRotasRepository', () => {
     });
     await repositorio.registrarHistorico(dados);
 
-    expect(prismaMock.historicoPreco.create).toHaveBeenCalledTimes(2);
-    expect(prismaMock.historicoPreco.create).toHaveBeenLastCalledWith({
+    expect(transacao.$executeRaw).toHaveBeenCalledTimes(2);
+    expect(transacao.historicoPreco.create).toHaveBeenCalledTimes(2);
+    expect(transacao.historicoPreco.create).toHaveBeenLastCalledWith({
       data: dados,
     });
   });

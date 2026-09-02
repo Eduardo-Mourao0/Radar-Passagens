@@ -52,7 +52,7 @@ function respostaLinks(links: unknown[]) {
   return { booking_options: [{ links }] };
 }
 
-function criarErroAxios(statusHttp?: number, code?: string) {
+function criarErroAxios(statusHttp?: unknown, code?: string) {
   return {
     isAxiosError: true,
     ...(code ? { code } : {}),
@@ -402,6 +402,12 @@ describe('IgnavService', () => {
       criarErroAxios(HttpStatus.REQUEST_TIMEOUT),
       HttpStatus.SERVICE_UNAVAILABLE,
       MENSAGENS_ERRO.ignavTempoEsgotado,
+    ],
+    [
+      'status HTTP inválido',
+      criarErroAxios('429'),
+      HttpStatus.SERVICE_UNAVAILABLE,
+      MENSAGENS_ERRO.ignavRespostaInvalida,
     ],
   ])(
     'retorna uma mensagem específica quando a Ignav informa %s',

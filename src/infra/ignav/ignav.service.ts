@@ -333,10 +333,17 @@ export class IgnavService implements ConsultarPrecosVoo {
         code?: unknown;
         response?: { status?: unknown };
       };
-      const statusHttp = erroAxios.response?.status;
+      const statusRecebido = erroAxios.response?.status;
+      const statusHttp =
+        typeof statusRecebido === 'number' && Number.isInteger(statusRecebido)
+          ? statusRecebido
+          : undefined;
 
       if (erroAxios.code === 'ECONNABORTED' || erroAxios.code === 'ETIMEDOUT') {
         return { tipo: 'tempo_esgotado' };
+      }
+      if (erroAxios.response && statusHttp === undefined) {
+        return { tipo: 'resposta_invalida' };
       }
       if (statusHttp === HttpStatus.REQUEST_TIMEOUT) {
         return { tipo: 'tempo_esgotado', statusHttp };

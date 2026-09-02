@@ -59,6 +59,7 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       expect.objectContaining({ id: 'rota-1' }),
       expect.objectContaining({ preco: '100.00', companhia: 'LATAM' }),
       undefined,
+      { horarioIda: undefined, horarioVolta: undefined, urlCompra: undefined },
     );
 
     repositorio.registrarHistoricoSeDiferente.mockResolvedValue({
@@ -81,5 +82,66 @@ describe('RegistrarHistoricoPrecoUseCase', () => {
       ),
     ).resolves.toMatchObject({ registrado: true });
     expect(avaliarAlertaPrecoUseCase.execute).toHaveBeenCalledTimes(2);
+  });
+
+  it('encaminha horários e link ao alerta sem persistir esses dados', async () => {
+    const repositorio: jest.Mocked<RotasRepository> = {
+      buscarPorChave: jest.fn(),
+      criar: jest.fn(),
+      reativar: jest.fn(),
+      desativar: jest.fn(),
+      excluir: jest.fn(),
+      listar: jest.fn(),
+      listarAtivas: jest.fn(),
+      desativarRotasComDataIdaPassada: jest.fn(),
+      buscarPorId: jest.fn(),
+      listarHistorico: jest.fn(),
+      buscarAlertaPreco: jest.fn(),
+      salvarAlertaPreco: jest.fn(),
+      atualizarAlertaDisparado: jest.fn(),
+      registrarHistoricoSeDiferente: jest.fn().mockResolvedValue(null),
+    };
+    const avaliarAlertaPrecoUseCase = { execute: jest.fn() };
+    const module = await Test.createTestingModule({
+      providers: [
+        RegistrarHistoricoPrecoUseCase,
+        { provide: ROTAS_REPOSITORY, useValue: repositorio },
+        {
+          provide: AvaliarAlertaPrecoUseCase,
+          useValue: avaliarAlertaPrecoUseCase,
+        },
+      ],
+    }).compile();
+    const useCase = module.get(RegistrarHistoricoPrecoUseCase);
+
+    await useCase.execute(
+      {
+        rotaId: 'rota-1',
+        preco: '100.00',
+        moeda: 'BRL',
+        companhia: 'LATAM',
+        horarioIda: '2026-12-10T08:30:00',
+        horarioVolta: '2026-12-20T18:45:00',
+        urlCompra: 'https://www.latamairlines.com',
+      },
+      { id: 'rota-1', usuarioId: 'usuario-1' } as never,
+    );
+
+    expect(repositorio.registrarHistoricoSeDiferente).toHaveBeenCalledWith({
+      rotaId: 'rota-1',
+      preco: '100.00',
+      moeda: 'BRL',
+      companhia: 'LATAM',
+    });
+    expect(avaliarAlertaPrecoUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'rota-1' }),
+      expect.objectContaining({ preco: '100.00', companhia: 'LATAM' }),
+      undefined,
+      {
+        horarioIda: '2026-12-10T08:30:00',
+        horarioVolta: '2026-12-20T18:45:00',
+        urlCompra: 'https://www.latamairlines.com',
+      },
+    );
   });
 });

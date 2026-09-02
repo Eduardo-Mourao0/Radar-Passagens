@@ -40,6 +40,8 @@ describe('VerificarPrecoRotaUseCase', () => {
       preco: '350.00',
       moeda: 'BRL',
       companhia: 'Azul',
+      horarioIda: '2026-12-10T08:30:00',
+      urlCompra: 'https://www.voeazul.com.br',
     });
     registrarHistoricoPreco.execute.mockResolvedValue({ registrado: true });
 
@@ -53,6 +55,8 @@ describe('VerificarPrecoRotaUseCase', () => {
         preco: '350.00',
         moeda: 'BRL',
         companhia: 'Azul',
+        horarioIda: '2026-12-10T08:30:00',
+        urlCompra: 'https://www.voeazul.com.br',
       },
       rota,
       undefined,

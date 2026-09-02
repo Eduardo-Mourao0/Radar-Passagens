@@ -35,10 +35,25 @@ const respostaIgnavSchema = z.object({
             z.object({
               operating_carrier_name: z.string().trim().min(1).nullable(),
               marketing_carrier_code: z.string().trim().min(1).nullable(),
+              departure_time: z.string().trim().min(1).optional(),
+              departure_time_local: z.string().trim().min(1).optional(),
             }),
           )
           .min(1),
       }),
+      inbound: z
+        .object({
+          segments: z
+            .array(
+              z.object({
+                departure_time: z.string().trim().min(1).optional(),
+                departure_time_local: z.string().trim().min(1).optional(),
+              }),
+            )
+            .min(1),
+        })
+        .nullable()
+        .optional(),
     }),
   ),
 });
@@ -168,12 +183,19 @@ export class IgnavService implements ConsultarPrecosVoo {
               );
 
               if (!menorLink) continue;
+              const horarioIda = this.obterHorarioSaida(oferta.outbound);
+              const horarioVolta = oferta.inbound
+                ? this.obterHorarioSaida(oferta.inbound)
+                : undefined;
 
               cotacoesDoTrabalhador.push({
                 preco: menorLink.preco,
                 moeda: menorLink.moeda,
                 ignavId: oferta.ignav_id!,
                 companhia: menorLink.fornecedor,
+                ...(horarioIda ? { horarioIda } : {}),
+                ...(horarioVolta ? { horarioVolta } : {}),
+                urlCompra: menorLink.url,
               });
             }
 
@@ -373,5 +395,17 @@ export class IgnavService implements ConsultarPrecosVoo {
     const dia = String(data.getDate()).padStart(2, '0');
 
     return `${ano}-${mes}-${dia}`;
+  }
+
+  private obterHorarioSaida(trecho: {
+    segments: ReadonlyArray<{
+      departure_time?: string;
+      departure_time_local?: string;
+    }>;
+  }): string | undefined {
+    const primeiroSegmento = trecho.segments[0];
+    return (
+      primeiroSegmento?.departure_time_local ?? primeiroSegmento?.departure_time
+    );
   }
 }

@@ -7,6 +7,9 @@ export type CotacaoDeVoo = Readonly<{
   moeda: string;
   companhia: string;
   ignavId?: string;
+  horarioIda?: string;
+  horarioVolta?: string;
+  urlCompra?: string;
 }>;
 
 export type LinkCompra = Readonly<{

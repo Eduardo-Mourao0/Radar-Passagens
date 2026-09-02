@@ -66,6 +66,10 @@ describe('IgnavService', () => {
   });
 
   it('persiste o menor preço verificado entre os sites oficiais', async () => {
+    const rotaIdaEVolta = {
+      ...rota,
+      dataVolta: new Date(2026, 8, 20),
+    };
     const httpService = criarHttpService(
       {
         itineraries: [
@@ -89,6 +93,14 @@ describe('IgnavService', () => {
                 {
                   operating_carrier_name: 'Azul',
                   marketing_carrier_code: 'AD',
+                  departure_time_local: '2026-09-10T08:30:00',
+                },
+              ],
+            },
+            inbound: {
+              segments: [
+                {
+                  departure_time: '2026-09-20T18:45:00',
                 },
               ],
             },
@@ -122,11 +134,14 @@ describe('IgnavService', () => {
     );
     const service = new IgnavService(httpService, configService);
 
-    await expect(service.consultarMenorPreco(rota)).resolves.toEqual({
+    await expect(service.consultarMenorPreco(rotaIdaEVolta)).resolves.toEqual({
       preco: '410.00',
       moeda: 'BRL',
       ignavId: 'ignav-azul',
       companhia: 'Azul',
+      horarioIda: '2026-09-10T08:30:00',
+      horarioVolta: '2026-09-20T18:45:00',
+      urlCompra: 'https://www.voeazul.com.br',
     });
   });
 

@@ -21,7 +21,8 @@ export class RegistrarHistoricoPrecoUseCase {
     rota: Rota,
     usuario?: Usuario,
   ) {
-    const novoHistorico = HistoricoPrecoEntity.criar(comando);
+    const { horarioIda, horarioVolta, urlCompra, ...dadosHistorico } = comando;
+    const novoHistorico = HistoricoPrecoEntity.criar(dadosHistorico);
     const historico =
       await this.rotasRepository.registrarHistoricoSeDiferente(novoHistorico);
 
@@ -30,6 +31,7 @@ export class RegistrarHistoricoPrecoUseCase {
       rota,
       historico ?? novoHistorico,
       usuario,
+      { horarioIda, horarioVolta, urlCompra },
     );
 
     if (!historico) return { registrado: false };

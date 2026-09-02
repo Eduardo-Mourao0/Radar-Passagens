@@ -4,4 +4,7 @@ export type RegistrarHistoricoPrecoCommand = Readonly<{
   moeda: string;
   companhia: string;
   ignavId?: string;
+  horarioIda?: string;
+  horarioVolta?: string;
+  urlCompra?: string;
 }>;

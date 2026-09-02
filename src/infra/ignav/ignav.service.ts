@@ -126,7 +126,9 @@ export class IgnavService implements ConsultarPrecosVoo {
           (ofertaA, ofertaB) => ofertaA.price.amount - ofertaB.price.amount,
         );
       const ofertasPendentes = [...ofertasVerificadas];
-      const resultados = await Promise.allSettled(
+      let houveFalha = false;
+      let falha: unknown;
+      const cotacoes = await Promise.all(
         Array.from(
           {
             length: Math.min(
@@ -137,11 +139,18 @@ export class IgnavService implements ConsultarPrecosVoo {
           async () => {
             const cotacoesDoTrabalhador: CotacaoDeVoo[] = [];
 
-            while (ofertasPendentes.length > 0) {
+            while (!houveFalha && ofertasPendentes.length > 0) {
               const oferta = ofertasPendentes.shift();
               if (!oferta) break;
 
-              const links = await this.obterLinksCompra(oferta.ignav_id!);
+              let links: LinkCompra[];
+              try {
+                links = await this.obterLinksCompra(oferta.ignav_id!);
+              } catch (erro: unknown) {
+                houveFalha = true;
+                falha = erro;
+                break;
+              }
               const menorLink = links.reduce<LinkCompra | null>(
                 (menor, link) =>
                   !menor || Number(link.preco) < Number(menor.preco)
@@ -164,15 +173,10 @@ export class IgnavService implements ConsultarPrecosVoo {
           },
         ),
       );
-      const falha = resultados.find(
-        (resultado) => resultado.status === 'rejected',
-      );
-      if (falha?.status === 'rejected') throw falha.reason;
+      if (houveFalha) throw falha;
 
-      return resultados
-        .flatMap((resultado) =>
-          resultado.status === 'fulfilled' ? resultado.value : [],
-        )
+      return cotacoes
+        .flat()
         .reduce<CotacaoDeVoo | null>(
           (menor, cotacao) =>
             !menor || Number(cotacao.preco) < Number(menor.preco)

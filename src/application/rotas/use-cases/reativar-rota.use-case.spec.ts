@@ -39,7 +39,7 @@ describe('ReativarRotaUseCase', () => {
     buscarAlertaPreco: jest.fn(),
     salvarAlertaPreco: jest.fn(),
     atualizarAlertaDisparado: jest.fn(),
-    registrarHistoricoSeDiferente: jest.fn(),
+    registrarHistorico: jest.fn(),
   };
 
   let useCase: ReativarRotaUseCase;

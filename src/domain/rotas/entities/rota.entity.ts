@@ -185,17 +185,6 @@ export class HistoricoPrecoEntity {
     return PrecoEntity.normalizar(preco);
   }
 
-  static temMesmoValor(
-    historico: Pick<HistoricoPreco, 'preco' | 'moeda' | 'companhia'>,
-    outro: Pick<NovoHistoricoPreco, 'preco' | 'moeda' | 'companhia'>,
-  ): boolean {
-    return (
-      historico.preco === outro.preco &&
-      historico.moeda === outro.moeda &&
-      historico.companhia === outro.companhia
-    );
-  }
-
   static compararPrecos(primeiro: string, segundo: string): number {
     return PrecoEntity.comparar(primeiro, segundo);
   }

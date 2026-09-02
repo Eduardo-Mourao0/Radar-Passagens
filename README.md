@@ -2,7 +2,7 @@
 
 Backend para cadastrar rotas aéreas e manter o histórico de preços de passagens. O projeto é construído em NestJS, com PostgreSQL e Prisma, e foi organizado em camadas para manter as regras de negócio independentes de HTTP e banco de dados.
 
-> A integração com a Ignav consulta tarifas verificadas e o job agendado registra o menor preço encontrado a cada seis horas.
+> A integração com a Ignav consulta tarifas verificadas e o job agendado registra o menor preço encontrado às 00h e 12h, no horário de Brasília.
 
 ## Tecnologias
 

@@ -45,7 +45,7 @@ describe('AvaliarAlertaPrecoUseCase', () => {
     desativarRotasComDataIdaPassada: jest.fn(),
     buscarPorId: jest.fn(),
     listarHistorico: jest.fn(),
-    registrarHistoricoSeDiferente: jest.fn(),
+    registrarHistorico: jest.fn(),
     buscarAlertaPreco: jest.fn(),
     salvarAlertaPreco: jest.fn(),
     atualizarAlertaDisparado: jest.fn(),

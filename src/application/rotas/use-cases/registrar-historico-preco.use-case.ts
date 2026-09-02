@@ -24,17 +24,13 @@ export class RegistrarHistoricoPrecoUseCase {
     const { horarioIda, horarioVolta, urlCompra, ...dadosHistorico } = comando;
     const novoHistorico = HistoricoPrecoEntity.criar(dadosHistorico);
     const historico =
-      await this.rotasRepository.registrarHistoricoSeDiferente(novoHistorico);
+      await this.rotasRepository.registrarHistorico(novoHistorico);
 
-    // A meta pode ser configurada depois de uma cotação já persistida.
-    await this.avaliarAlertaPrecoUseCase.execute(
-      rota,
-      historico ?? novoHistorico,
-      usuario,
-      { horarioIda, horarioVolta, urlCompra },
-    );
-
-    if (!historico) return { registrado: false };
+    await this.avaliarAlertaPrecoUseCase.execute(rota, historico, usuario, {
+      horarioIda,
+      horarioVolta,
+      urlCompra,
+    });
 
     return { registrado: true, historico };
   }

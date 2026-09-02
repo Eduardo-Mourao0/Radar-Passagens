@@ -7,6 +7,8 @@ import type { UsuariosRepository } from '../../../domain/usuarios/repositories/u
 import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
 import { VerificarPrecoRotaUseCase } from '../use-cases/verificar-preco-rota.use-case';
 
+const FUSO_HORARIO_BRASILIA = 'America/Sao_Paulo';
+
 /**
  * Orquestra as verificações periódicas; regras de negócio permanecem nos use cases.
  */
@@ -23,7 +25,9 @@ export class PriceCheckJob {
     private readonly usuariosRepository: UsuariosRepository,
   ) {}
 
-  @Cron(CronExpression.EVERY_6_HOURS)
+  @Cron(CronExpression.EVERY_12_HOURS, {
+    timeZone: FUSO_HORARIO_BRASILIA,
+  })
   async executar(): Promise<void> {
     const inicioDeHoje = new Date();
     inicioDeHoje.setHours(0, 0, 0, 0);

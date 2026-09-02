@@ -57,49 +57,46 @@ describe('PrismaRotasRepository', () => {
     });
   });
 
-  it('atualiza o identificador da Ignav quando a cotacao nao mudou', async () => {
-    const historicoExistente = {
+  it('registra uma nova amostra mesmo quando a cotacao nao mudou', async () => {
+    const historicoCriado = {
       id: 'historico-1',
       rotaId: 'rota-1',
       preco: { toString: () => '100.00' },
       moeda: 'BRL',
       companhia: 'LATAM',
-      ignavId: null,
+      ignavId: 'ignav-novo',
       coletadoEm: new Date(2026, 0, 1),
     };
-    const transacao = {
-      $executeRaw: jest.fn(),
+    const prismaMock = {
       historicoPreco: {
-        findFirst: jest.fn().mockResolvedValue(historicoExistente),
-        update: jest.fn().mockResolvedValue({
-          ...historicoExistente,
-          ignavId: 'ignav-novo',
-        }),
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue(historicoCriado),
       },
     };
-    const prisma = {
-      $transaction: jest.fn(
-        async (executar: (cliente: typeof transacao) => Promise<unknown>) =>
-          executar(transacao),
-      ),
-    } as unknown as PrismaService;
+    const prisma = prismaMock as unknown as PrismaService;
     const repositorio = new PrismaRotasRepository(prisma);
 
-    await expect(
-      repositorio.registrarHistoricoSeDiferente({
-        rotaId: 'rota-1',
-        preco: '100.00',
-        moeda: 'BRL',
-        companhia: 'LATAM',
-        ignavId: ' ignav-novo ',
-      }),
-    ).resolves.toBeNull();
+    const dados = {
+      rotaId: 'rota-1',
+      preco: '100.00',
+      moeda: 'BRL',
+      companhia: 'LATAM',
+      ignavId: 'ignav-novo',
+    };
 
-    expect(transacao.historicoPreco.update).toHaveBeenCalledWith({
-      where: { id: 'historico-1' },
-      data: { ignavId: 'ignav-novo' },
+    await expect(repositorio.registrarHistorico(dados)).resolves.toEqual({
+      id: 'historico-1',
+      rotaId: 'rota-1',
+      preco: '100.00',
+      moeda: 'BRL',
+      companhia: 'LATAM',
+      ignavId: 'ignav-novo',
+      coletadoEm: new Date(2026, 0, 1),
     });
-    expect(transacao.historicoPreco.create).not.toHaveBeenCalled();
+    await repositorio.registrarHistorico(dados);
+
+    expect(prismaMock.historicoPreco.create).toHaveBeenCalledTimes(2);
+    expect(prismaMock.historicoPreco.create).toHaveBeenLastCalledWith({
+      data: dados,
+    });
   });
 });

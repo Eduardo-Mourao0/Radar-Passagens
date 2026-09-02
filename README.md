@@ -123,6 +123,7 @@ Cada pessoa inicia o bot por um link gerado no cadastro. O bot envia um código 
 | `PATCH`  | `/rotas/:id/reativar`     | Retoma o monitoramento de uma rota.              |
 | `DELETE` | `/rotas/:id`              | Exclui uma rota e todos os dados vinculados.     |
 | `GET`    | `/rotas/:id/historico`    | Retorna o histórico de preços da rota.           |
+| `GET`    | `/rotas/:id/links-compra` | Retorna links e preços oficiais das companhias.  |
 | `PUT`    | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
 | `POST`   | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
 | `POST`   | `/auth/cadastros`          | Inicia o cadastro e a confirmação do telefone no Telegram. |
@@ -196,6 +197,14 @@ DELETE /rotas/:id
 ```
 
 A exclusão é permanente. O banco remove em cascata o alerta configurado e todo o histórico de preços associado à rota.
+
+### Links de compra
+
+```http
+GET /rotas/:id/links-compra
+```
+
+A resposta contém somente opções de compra das companhias aéreas, com tarifa verificada. Agências e outros sites de terceiros são excluídos. O preço registrado no histórico da rota também considera apenas essas tarifas oficiais.
 
 ### Respostas de erro
 

@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { HttpService } from '@nestjs/axios';
-import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { of, throwError } from 'rxjs';
+import { MENSAGENS_ERRO } from '../../domain/errors/mensagens-erro';
 import { IgnavService } from './ignav.service';
 
 const rota = {
@@ -44,6 +50,14 @@ const respostaComOfertas = {
     },
   ],
 };
+
+function criarErroAxios(statusHttp?: number, code?: string) {
+  return {
+    isAxiosError: true,
+    ...(code ? { code } : {}),
+    ...(statusHttp ? { response: { status: statusHttp } } : {}),
+  };
+}
 
 describe('IgnavService', () => {
   const configService = {
@@ -249,6 +263,92 @@ describe('IgnavService', () => {
     warnLog.mockRestore();
   });
 
+  it.each([
+    [
+      'uma cotação expirada',
+      criarErroAxios(HttpStatus.NOT_FOUND),
+      HttpStatus.NOT_FOUND,
+      MENSAGENS_ERRO.ignavCotacaoExpirada,
+    ],
+    [
+      'rate limit da Ignav',
+      criarErroAxios(HttpStatus.TOO_MANY_REQUESTS),
+      HttpStatus.TOO_MANY_REQUESTS,
+      MENSAGENS_ERRO.ignavLimiteConsultas,
+    ],
+    [
+      'timeout de conexão',
+      criarErroAxios(undefined, 'ETIMEDOUT'),
+      HttpStatus.SERVICE_UNAVAILABLE,
+      MENSAGENS_ERRO.ignavTempoEsgotado,
+    ],
+    [
+      'timeout retornado pela Ignav',
+      criarErroAxios(HttpStatus.REQUEST_TIMEOUT),
+      HttpStatus.SERVICE_UNAVAILABLE,
+      MENSAGENS_ERRO.ignavTempoEsgotado,
+    ],
+  ])(
+    'retorna uma mensagem específica quando a Ignav informa %s',
+    async (_, erroAxios, statusEsperado, mensagemEsperada) => {
+      const httpService = {
+        post: jest.fn().mockReturnValue(throwError(() => erroAxios)),
+      } as unknown as HttpService;
+      const service = new IgnavService(httpService, configService);
+
+      const erro = await service
+        .obterLinksCompra('ignav-1')
+        .catch((erro: unknown) => erro);
+
+      expect(erro).toBeInstanceOf(HttpException);
+      expect((erro as HttpException).getStatus()).toBe(statusEsperado);
+      const resposta = (erro as HttpException).getResponse();
+      expect(typeof resposta === 'string' ? resposta : resposta.message).toBe(
+        mensagemEsperada,
+      );
+    },
+  );
+
+  it('informa quando a Ignav retorna dados inválidos para os links', async () => {
+    const httpService = {
+      post: jest.fn().mockReturnValue(of({ data: { booking_options: null } })),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    const erro = await service
+      .obterLinksCompra('ignav-1')
+      .catch((erro: unknown) => erro);
+
+    expect(erro).toBeInstanceOf(ServiceUnavailableException);
+    expect((erro as HttpException).getResponse()).toMatchObject({
+      message: MENSAGENS_ERRO.ignavRespostaInvalida,
+    });
+  });
+
+  it('registra o endpoint, tipo e status da falha sem dados sensíveis', async () => {
+    const httpService = {
+      post: jest
+        .fn()
+        .mockReturnValue(
+          throwError(() => criarErroAxios(HttpStatus.TOO_MANY_REQUESTS)),
+        ),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+    await service.obterLinksCompra('ignav-1').catch(() => undefined);
+
+    expect(errorLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'ignav_consulta_preco_falhou',
+        tipo: 'limite_consultas',
+        operacao: 'obter_links_compra',
+        statusHttp: HttpStatus.TOO_MANY_REQUESTS,
+      }),
+    );
+    errorLog.mockRestore();
+  });
+
   it('não expõe a chave de API quando a consulta falha', async () => {
     const httpService = {
       post: jest
@@ -286,6 +386,7 @@ describe('IgnavService', () => {
       JSON.stringify({
         evento: 'ignav_consulta_preco_falhou',
         tipo: 'inesperada',
+        operacao: 'consultar_precos',
       }),
     );
     errorLog.mockRestore();

@@ -3,10 +3,13 @@ import {
   Injectable,
   Logger,
   BadRequestException,
+  HttpException,
+  HttpStatus,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom, timeout, TimeoutError } from 'rxjs';
 import { z } from 'zod';
 import {
   ConsultarPrecosVoo,
@@ -54,7 +57,15 @@ const respostaLinksCompraSchema = z.object({
   ),
 });
 
-type TipoFalhaConsulta = 'rede' | 'resposta_invalida' | 'inesperada';
+type OperacaoIgnav = 'consultar_precos' | 'obter_links_compra';
+type TipoFalhaConsulta =
+  | 'tempo_esgotado'
+  | 'limite_consultas'
+  | 'cotacao_expirada'
+  | 'indisponivel'
+  | 'rede'
+  | 'resposta_invalida'
+  | 'inesperada';
 
 /**
  * Adaptador da Ignav que normaliza tarifas para o contrato da aplicação.
@@ -101,10 +112,7 @@ export class IgnavService implements ConsultarPrecosVoo {
 
       const resultado = respostaIgnavSchema.safeParse(resposta.data);
       if (!resultado.success) {
-        this.registrarFalhaConsulta('resposta_invalida');
-        throw new ServiceUnavailableException(
-          MENSAGENS_ERRO.ignavConsultaIndisponivel,
-        );
+        this.lancarFalhaConsulta('resposta_invalida', 'consultar_precos');
       }
 
       const menorOferta = resultado.data.itineraries.reduce(
@@ -140,14 +148,11 @@ export class IgnavService implements ConsultarPrecosVoo {
         companhia: companhiaIdentificada ?? 'Companhia não identificada',
       };
     } catch (erro: unknown) {
-      if (erro instanceof ServiceUnavailableException) {
+      if (erro instanceof HttpException) {
         throw erro;
       }
 
-      this.registrarFalhaConsulta(this.identificarTipoFalha(erro));
-      throw new ServiceUnavailableException(
-        MENSAGENS_ERRO.ignavConsultaIndisponivel,
-      );
+      this.lancarFalhaDaIgnav(erro, 'consultar_precos');
     }
   }
 
@@ -174,10 +179,7 @@ export class IgnavService implements ConsultarPrecosVoo {
       );
       const resultado = respostaLinksCompraSchema.safeParse(resposta.data);
       if (!resultado.success) {
-        this.registrarFalhaConsulta('resposta_invalida');
-        throw new ServiceUnavailableException(
-          MENSAGENS_ERRO.ignavConsultaIndisponivel,
-        );
+        this.lancarFalhaConsulta('resposta_invalida', 'obter_links_compra');
       }
       const links = resultado.data.booking_options.flatMap((opcao) =>
         opcao.links.map((link) => ({
@@ -194,34 +196,109 @@ export class IgnavService implements ConsultarPrecosVoo {
       }
       return links;
     } catch (erro: unknown) {
-      if (erro instanceof ServiceUnavailableException) throw erro;
-      this.registrarFalhaConsulta(this.identificarTipoFalha(erro));
-      throw new ServiceUnavailableException(
-        MENSAGENS_ERRO.ignavConsultaIndisponivel,
-      );
+      if (erro instanceof HttpException) throw erro;
+      this.lancarFalhaDaIgnav(erro, 'obter_links_compra');
     }
   }
 
-  private registrarFalhaConsulta(tipo: TipoFalhaConsulta): void {
+  private lancarFalhaDaIgnav(erro: unknown, operacao: OperacaoIgnav): never {
+    const { tipo, statusHttp } = this.classificarFalhaConsulta(erro, operacao);
+    this.lancarFalhaConsulta(tipo, operacao, statusHttp);
+  }
+
+  private lancarFalhaConsulta(
+    tipo: TipoFalhaConsulta,
+    operacao: OperacaoIgnav,
+    statusHttp?: number,
+  ): never {
+    this.registrarFalhaConsulta(tipo, operacao, statusHttp);
+
+    if (tipo === 'cotacao_expirada') {
+      throw new NotFoundException(MENSAGENS_ERRO.ignavCotacaoExpirada);
+    }
+    if (tipo === 'limite_consultas') {
+      throw new HttpException(
+        MENSAGENS_ERRO.ignavLimiteConsultas,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+    if (tipo === 'tempo_esgotado') {
+      throw new ServiceUnavailableException(MENSAGENS_ERRO.ignavTempoEsgotado);
+    }
+    if (tipo === 'rede') {
+      throw new ServiceUnavailableException(
+        MENSAGENS_ERRO.ignavConexaoIndisponivel,
+      );
+    }
+    if (tipo === 'resposta_invalida') {
+      throw new ServiceUnavailableException(
+        MENSAGENS_ERRO.ignavRespostaInvalida,
+      );
+    }
+
+    throw new ServiceUnavailableException(
+      MENSAGENS_ERRO.ignavConsultaIndisponivel,
+    );
+  }
+
+  private registrarFalhaConsulta(
+    tipo: TipoFalhaConsulta,
+    operacao: OperacaoIgnav,
+    statusHttp?: number,
+  ): void {
     this.logger.error(
       JSON.stringify({
         evento: 'ignav_consulta_preco_falhou',
         tipo,
+        operacao,
+        ...(statusHttp ? { statusHttp } : {}),
       }),
     );
   }
 
-  private identificarTipoFalha(erro: unknown): TipoFalhaConsulta {
+  private classificarFalhaConsulta(
+    erro: unknown,
+    operacao: OperacaoIgnav,
+  ): Readonly<{ tipo: TipoFalhaConsulta; statusHttp?: number }> {
+    if (erro instanceof TimeoutError) {
+      return { tipo: 'tempo_esgotado' };
+    }
+
     if (
       typeof erro === 'object' &&
       erro !== null &&
       'isAxiosError' in erro &&
       erro.isAxiosError === true
     ) {
-      return 'rede';
+      const erroAxios = erro as {
+        code?: unknown;
+        response?: { status?: unknown };
+      };
+      const statusHttp = erroAxios.response?.status;
+
+      if (erroAxios.code === 'ECONNABORTED' || erroAxios.code === 'ETIMEDOUT') {
+        return { tipo: 'tempo_esgotado' };
+      }
+      if (statusHttp === HttpStatus.REQUEST_TIMEOUT) {
+        return { tipo: 'tempo_esgotado', statusHttp };
+      }
+      if (operacao === 'obter_links_compra' && statusHttp === 404) {
+        return { tipo: 'cotacao_expirada', statusHttp };
+      }
+      if (statusHttp === 429) {
+        return { tipo: 'limite_consultas', statusHttp };
+      }
+      if (typeof statusHttp === 'number' && statusHttp >= 500) {
+        return { tipo: 'indisponivel', statusHttp };
+      }
+      if (typeof statusHttp === 'number') {
+        return { tipo: 'inesperada', statusHttp };
+      }
+
+      return { tipo: 'rede' };
     }
 
-    return 'inesperada';
+    return { tipo: 'inesperada' };
   }
 
   private identificarCompanhia(

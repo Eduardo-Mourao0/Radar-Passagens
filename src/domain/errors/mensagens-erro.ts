@@ -25,6 +25,16 @@ export const MENSAGENS_ERRO = {
     'companhia deve ter no máximo 100 caracteres e conter apenas letras, números, espaços, hífens, apóstrofos, pontos ou &.',
   ignavConsultaIndisponivel:
     'Não foi possível consultar os preços na Ignav. Tente novamente mais tarde.',
+  ignavTempoEsgotado:
+    'A Ignav demorou para responder. Tente consultar novamente em instantes.',
+  ignavLimiteConsultas:
+    'Muitas consultas foram feitas em pouco tempo. Aguarde alguns minutos e tente novamente.',
+  ignavCotacaoExpirada:
+    'Esta cotação expirou. Atualize o preço da rota e tente novamente.',
+  ignavRespostaInvalida:
+    'A Ignav retornou dados inválidos. Tente novamente mais tarde.',
+  ignavConexaoIndisponivel:
+    'Não foi possível conectar à Ignav. Verifique sua conexão e tente novamente.',
   linksCompraIndisponiveis:
     'Nenhum link de compra est\u00e1 dispon\u00edvel para a \u00faltima cota\u00e7\u00e3o desta rota.',
 } as const;

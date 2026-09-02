@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { NotFoundException } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import {
@@ -28,13 +28,11 @@ describe('ConfigurarAlertaPrecoUseCase', () => {
   };
   const avaliarAlertaPrecoUseCase = { execute: jest.fn() };
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    repositorio.listarHistorico.mockResolvedValue([]);
-  });
+  beforeEach(() => jest.clearAllMocks());
 
   it('configura um alerta e normaliza o preço-alvo', async () => {
     repositorio.buscarPorId.mockResolvedValue({ id: 'rota-1' } as never);
+    repositorio.listarHistorico.mockResolvedValue([]);
     repositorio.salvarAlertaPreco.mockResolvedValue({
       id: 'alerta-1',
       rotaId: 'rota-1',
@@ -107,6 +105,52 @@ describe('ConfigurarAlertaPrecoUseCase', () => {
       rota,
       historico,
     );
+  });
+
+  it('mantém o alerta salvo quando a avaliação imediata falha', async () => {
+    const rota = { id: 'rota-1', usuarioId: 'usuario-1' } as never;
+    const historico = { preco: '811.00', companhia: 'GOL' };
+    const alertaSalvo = {
+      id: 'alerta-1',
+      rotaId: 'rota-1',
+      precoAlvo: '900.00',
+      disparado: false,
+      criadoEm: new Date(),
+      atualizadoEm: new Date(),
+    };
+    repositorio.buscarPorId.mockResolvedValue(rota);
+    repositorio.salvarAlertaPreco.mockResolvedValue(alertaSalvo);
+    repositorio.listarHistorico.mockResolvedValue([historico] as never);
+    avaliarAlertaPrecoUseCase.execute.mockRejectedValue(
+      new Error('falha ao notificar'),
+    );
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    const modulo = await Test.createTestingModule({
+      providers: [
+        ConfigurarAlertaPrecoUseCase,
+        { provide: ROTAS_REPOSITORY, useValue: repositorio },
+        {
+          provide: AvaliarAlertaPrecoUseCase,
+          useValue: avaliarAlertaPrecoUseCase,
+        },
+      ],
+    }).compile();
+    const useCase = modulo.get(ConfigurarAlertaPrecoUseCase);
+
+    await expect(
+      useCase.execute({
+        rotaId: 'rota-1',
+        usuarioId: 'usuario-1',
+        precoAlvo: '900.00',
+      }),
+    ).resolves.toEqual(alertaSalvo);
+    expect(errorLog).toHaveBeenCalledWith(
+      JSON.stringify({
+        evento: 'avaliacao_alerta_ao_configurar_falhou',
+        rotaId: 'rota-1',
+      }),
+    );
+    errorLog.mockRestore();
   });
 
   it('informa quando a rota não existe', async () => {

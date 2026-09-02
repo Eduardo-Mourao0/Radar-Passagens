@@ -104,10 +104,25 @@ describe('AvaliarAlertaPrecoUseCase', () => {
       alerta,
       rota,
       historico,
+      detalhesVoo: undefined,
     });
     expect(repositorio.atualizarAlertaDisparado).toHaveBeenCalledWith(
       'alerta-1',
       true,
+    );
+  });
+
+  it('inclui detalhes da cotação na notificação', async () => {
+    repositorio.buscarAlertaPreco.mockResolvedValue(alerta);
+    const detalhesVoo = {
+      horarioIda: '2026-12-10T08:30:00',
+      urlCompra: 'https://www.voeazul.com.br',
+    };
+
+    await useCase.execute(rota, historico, undefined, detalhesVoo);
+
+    expect(notificador.enviar).toHaveBeenCalledWith(
+      expect.objectContaining({ detalhesVoo }),
     );
   });
 

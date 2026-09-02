@@ -7,7 +7,10 @@ import {
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
 import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.repository';
 import { NOTIFICADOR_ALERTA_PRECO } from '../ports/notificador-alerta-preco.port';
-import type { NotificadorAlertaPreco } from '../ports/notificador-alerta-preco.port';
+import type {
+  DetalhesVooAlerta,
+  NotificadorAlertaPreco,
+} from '../ports/notificador-alerta-preco.port';
 import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { UsuariosRepository } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
@@ -26,6 +29,7 @@ export class AvaliarAlertaPrecoUseCase {
     rota: Rota,
     historico: Pick<HistoricoPreco, 'preco' | 'companhia'>,
     usuarioDoContexto?: Usuario,
+    detalhesVoo?: DetalhesVooAlerta,
   ): Promise<void> {
     const alerta = await this.rotasRepository.buscarAlertaPreco(rota.id);
     if (!alerta) return;
@@ -48,6 +52,7 @@ export class AvaliarAlertaPrecoUseCase {
       alerta,
       rota,
       historico,
+      detalhesVoo,
     });
     if (!notificacaoEnviada) return;
 

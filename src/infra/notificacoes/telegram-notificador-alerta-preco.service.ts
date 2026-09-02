@@ -60,6 +60,8 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
           .post<unknown>(urlEnvio, {
             chat_id: chatId,
             text: this.montarMensagem(notificacao),
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
           })
           .pipe(
             timeout(TelegramNotificadorAlertaPrecoService.TIMEOUT_ENVIO_MS),
@@ -95,16 +97,81 @@ export class TelegramNotificadorAlertaPrecoService implements NotificadorAlertaP
   }
 
   private montarMensagem(notificacao: NotificacaoAlertaPreco): string {
-    const { rota, alerta, historico } = notificacao;
+    const { rota, alerta, historico, detalhesVoo } = notificacao;
+    const horarioIda = detalhesVoo?.horarioIda
+      ? `Ida: ${this.formatarHorario(detalhesVoo.horarioIda)}`
+      : null;
+    const horarioVolta = detalhesVoo?.horarioVolta
+      ? `Volta: ${this.formatarHorario(detalhesVoo.horarioVolta)}`
+      : null;
+    const urlCompra = this.obterUrlCompra(detalhesVoo?.urlCompra);
 
     return [
-      '⚠️ Alerta de preço',
+      '<b>ALERTA DE PRECO</b>',
       '',
-      `${rota.origem} → ${rota.destino}`,
-      `Preço encontrado: ${this.formatarPreco(historico.preco)}`,
-      `Sua meta: ${this.formatarPreco(alerta.precoAlvo)}`,
-      `Companhia: ${historico.companhia}`,
-    ].join('\n');
+      `<b>${this.escaparHtml(rota.origem)} -> ${this.escaparHtml(rota.destino)}</b>`,
+      this.escaparHtml(historico.companhia),
+      ...(horarioIda || horarioVolta ? ['', horarioIda, horarioVolta] : []),
+      '',
+      `<b>Preco encontrado:</b> ${this.formatarPreco(historico.preco)}`,
+      `<b>Sua meta:</b> ${this.formatarPreco(alerta.precoAlvo)}`,
+      ...(urlCompra
+        ? ['', `<a href="${this.escaparHtml(urlCompra)}">VER PASSAGEM</a>`]
+        : []),
+    ]
+      .filter((linha): linha is string => linha !== null)
+      .join('\n');
+  }
+
+  private formatarHorario(horario: string): string {
+    const resultado = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})/.exec(horario);
+    if (!resultado) return this.escaparHtml(horario);
+
+    const [, ano, mes, dia, hora] = resultado;
+    const meses = [
+      'jan',
+      'fev',
+      'mar',
+      'abr',
+      'mai',
+      'jun',
+      'jul',
+      'ago',
+      'set',
+      'out',
+      'nov',
+      'dez',
+    ];
+    const mesFormatado = meses[Number(mes) - 1] ?? mes;
+
+    return `${dia} ${mesFormatado} ${ano}, ${hora}`;
+  }
+
+  private obterUrlCompra(url?: string): string | null {
+    if (!url) return null;
+
+    try {
+      const urlCompra = new URL(url);
+      return ['http:', 'https:'].includes(urlCompra.protocol)
+        ? urlCompra.toString()
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private escaparHtml(valor: string): string {
+    return valor.replace(/[&<>"']/g, (caractere) => {
+      const caracteresEscapados: Record<string, string> = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      };
+
+      return caracteresEscapados[caractere];
+    });
   }
 
   private formatarPreco(preco: string): string {

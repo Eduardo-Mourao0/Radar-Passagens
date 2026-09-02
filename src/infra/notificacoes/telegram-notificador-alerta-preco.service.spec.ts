@@ -20,6 +20,11 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
     rota: { id: 'rota-1', origem: 'BSB', destino: 'FOR' },
     alerta: { precoAlvo: '1500.00' },
     historico: { preco: '1400.00', companhia: 'Azul' },
+    detalhesVoo: {
+      horarioIda: '2026-12-10T08:30:00',
+      horarioVolta: '2026-12-20T18:45:00',
+      urlCompra: 'https://www.voeazul.com.br/busca?origem=BSB&destino=FOR',
+    },
   } as never;
 
   beforeEach(() => jest.clearAllMocks());
@@ -37,13 +42,47 @@ describe('TelegramNotificadorAlertaPrecoService', () => {
     await expect(service.enviar(notificacao)).resolves.toBe(true);
     const [url, corpo] = post.mock.calls[0] as unknown as [
       string,
-      { chat_id: string; text: string },
+      {
+        chat_id: string;
+        text: string;
+        parse_mode: string;
+        disable_web_page_preview: boolean;
+      },
     ];
 
     expect(url).toBe('https://api.telegram.org/bottoken-secreto/sendMessage');
     expect(corpo.chat_id).toBe('123456');
-    expect(corpo.text).toContain('BSB → FOR');
+    expect(corpo.text).toContain('BSB -> FOR');
+    expect(corpo.text).toContain('Ida: 10 dez 2026, 08:30');
+    expect(corpo.text).toContain('Volta: 20 dez 2026, 18:45');
     expect(corpo.text).toContain('R$ 1.400,00');
+    expect(corpo.text).toContain(
+      '<a href="https://www.voeazul.com.br/busca?origem=BSB&amp;destino=FOR">VER PASSAGEM</a>',
+    );
+    expect(corpo.parse_mode).toBe('HTML');
+    expect(corpo.disable_web_page_preview).toBe(true);
+  });
+
+  it('omite o link quando a URL não é HTTP ou HTTPS', async () => {
+    const post = jest.fn().mockReturnValue(of({ data: { ok: true } }));
+    const httpService = { post } as unknown as HttpService;
+    const service = new TelegramNotificadorAlertaPrecoService(
+      httpService,
+      configService,
+    );
+
+    await expect(
+      service.enviar({
+        ...notificacao,
+        detalhesVoo: { urlCompra: 'javascript:alert(1)' },
+      }),
+    ).resolves.toBe(true);
+
+    const [, corpo] = post.mock.calls[0] as unknown as [
+      string,
+      { text: string },
+    ];
+    expect(corpo.text).not.toContain('VER PASSAGEM');
   });
 
   it('não expõe o token quando o Telegram falha', async () => {

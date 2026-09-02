@@ -241,7 +241,7 @@ O alerta é entregue pelo Telegram. A regra foi isolada do canal de entrega, per
 
 ## Dados persistidos
 
-Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada `HistoricoPreco` pertence a uma rota e armazena preço decimal, moeda, companhia e horário da coleta. Uma rota pode ter um `AlertaPreco`, com preço-alvo e o estado do último disparo.
+Uma `Rota` possui origem, destino, datas, status e uma chave de monitoramento única. Cada coleta bem-sucedida gera um `HistoricoPreco`, mesmo quando preço, moeda e companhia não variam. O histórico armazena preço decimal, moeda, companhia e horário da coleta. Uma rota pode ter um `AlertaPreco`, com preço-alvo e o estado do último disparo.
 
 O histórico usa o índice `(rotaId, coletadoEm DESC)` para consultas eficientes dos registros mais recentes.
 

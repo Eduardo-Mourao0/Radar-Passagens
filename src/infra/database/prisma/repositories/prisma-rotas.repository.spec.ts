@@ -102,6 +102,12 @@ describe('PrismaRotasRepository', () => {
     await repositorio.registrarHistorico(dados);
 
     expect(transacao.$executeRaw).toHaveBeenCalledTimes(2);
+    expect(transacao.$executeRaw).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.stringContaining('pg_advisory_xact_lock'),
+      ]),
+      dados.rotaId,
+    );
     expect(transacao.historicoPreco.create).toHaveBeenCalledTimes(2);
     expect(transacao.historicoPreco.create).toHaveBeenLastCalledWith({
       data: dados,

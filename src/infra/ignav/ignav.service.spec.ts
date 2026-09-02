@@ -2,7 +2,7 @@
 import { HttpService } from '@nestjs/axios';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { defer, delay, finalize, of, throwError } from 'rxjs';
+import { defer, delay, finalize, of, tap, throwError } from 'rxjs';
 import { IgnavService } from './ignav.service';
 
 const rota = {
@@ -178,6 +178,72 @@ describe('IgnavService', () => {
     await service.consultarMenorPreco(rota);
 
     expect(maiorConcorrencia).toBe(3);
+  });
+
+  it('aguarda as consultas iniciadas antes de propagar uma falha', async () => {
+    let consultaConcluida = false;
+    const httpService = {
+      post: jest.fn((url: string, corpo: { ignav_id?: string }) => {
+        if (url.endsWith('/booking-links')) {
+          if (corpo.ignav_id === 'ignav-com-falha') {
+            return throwError(() => new Error('falha na Ignav'));
+          }
+
+          return of({
+            data: respostaLinks([
+              {
+                provider_name: 'GOL',
+                provider_type: 'airline',
+                price: { amount: 300, currency: 'BRL', status: 'verified' },
+                url: 'https://www.voegol.com.br',
+              },
+            ]),
+          }).pipe(
+            delay(5),
+            tap(() => {
+              consultaConcluida = true;
+            }),
+          );
+        }
+
+        return of({
+          data: {
+            itineraries: [
+              {
+                ignav_id: 'ignav-com-falha',
+                price: { amount: 300, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: 'GOL',
+                      marketing_carrier_code: 'G3',
+                    },
+                  ],
+                },
+              },
+              {
+                ignav_id: 'ignav-valido',
+                price: { amount: 310, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: 'GOL',
+                      marketing_carrier_code: 'G3',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        });
+      }),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    await expect(service.consultarMenorPreco(rota)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(consultaConcluida).toBe(true);
   });
 
   it('consulta ida e volta pelo endpoint específico', async () => {

@@ -126,7 +126,7 @@ export class IgnavService implements ConsultarPrecosVoo {
           (ofertaA, ofertaB) => ofertaA.price.amount - ofertaB.price.amount,
         );
       const ofertasPendentes = [...ofertasVerificadas];
-      const cotacoes = await Promise.all(
+      const resultados = await Promise.allSettled(
         Array.from(
           {
             length: Math.min(
@@ -164,9 +164,15 @@ export class IgnavService implements ConsultarPrecosVoo {
           },
         ),
       );
+      const falha = resultados.find(
+        (resultado) => resultado.status === 'rejected',
+      );
+      if (falha?.status === 'rejected') throw falha.reason;
 
-      return cotacoes
-        .flat()
+      return resultados
+        .flatMap((resultado) =>
+          resultado.status === 'fulfilled' ? resultado.value : [],
+        )
         .reduce<CotacaoDeVoo | null>(
           (menor, cotacao) =>
             !menor || Number(cotacao.preco) < Number(menor.preco)

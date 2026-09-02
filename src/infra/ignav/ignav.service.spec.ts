@@ -2,7 +2,7 @@
 import { HttpService } from '@nestjs/axios';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { of, throwError } from 'rxjs';
+import { defer, delay, finalize, of, throwError } from 'rxjs';
 import { IgnavService } from './ignav.service';
 
 const rota = {
@@ -116,6 +116,70 @@ describe('IgnavService', () => {
     });
   });
 
+  it('limita a concorrência ao consultar links oficiais', async () => {
+    let consultasEmAndamento = 0;
+    let maiorConcorrencia = 0;
+    const httpService = {
+      post: jest.fn((url: string, corpo: { ignav_id?: string }) => {
+        if (url.endsWith('/booking-links')) {
+          return defer(() => {
+            consultasEmAndamento += 1;
+            maiorConcorrencia = Math.max(
+              maiorConcorrencia,
+              consultasEmAndamento,
+            );
+
+            return of({
+              data: respostaLinks([
+                {
+                  provider_name: 'GOL',
+                  provider_type: 'airline',
+                  price: {
+                    amount: 300,
+                    currency: 'BRL',
+                    status: 'verified',
+                  },
+                  url: `https://www.voegol.com.br/${corpo.ignav_id}`,
+                },
+              ]),
+            }).pipe(
+              delay(5),
+              finalize(() => {
+                consultasEmAndamento -= 1;
+              }),
+            );
+          });
+        }
+
+        return of({
+          data: {
+            itineraries: Array.from({ length: 5 }, (_, indice) => ({
+              ignav_id: `ignav-${indice}`,
+              price: {
+                amount: 300 + indice,
+                currency: 'BRL',
+                status: 'verified',
+              },
+              outbound: {
+                segments: [
+                  {
+                    operating_carrier_name: 'GOL',
+                    marketing_carrier_code: 'G3',
+                  },
+                ],
+              },
+            })),
+          },
+        });
+      }),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    await service.consultarMenorPreco(rota);
+
+    expect(maiorConcorrencia).toBe(3);
+  });
+
   it('consulta ida e volta pelo endpoint específico', async () => {
     const httpService = criarHttpService({ itineraries: [] }, {});
     const service = new IgnavService(httpService, configService);
@@ -212,6 +276,12 @@ describe('IgnavService', () => {
           provider_type: 'airline',
           price: null,
           url: 'https://www.latamairlines.com',
+        },
+        {
+          provider_name: 'Azul',
+          provider_type: 'airline',
+          price: { amount: 430, currency: 'BRL', status: 'unverified' },
+          url: 'https://www.voeazul.com.br',
         },
       ]),
     });

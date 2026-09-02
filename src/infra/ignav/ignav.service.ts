@@ -51,7 +51,7 @@ const respostaLinksCompraSchema = z.object({
             .object({
               amount: z.number().finite().positive(),
               currency: z.literal('BRL'),
-              status: z.literal('verified'),
+              status: z.enum(['verified', 'unverified']),
             })
             .nullable()
             .optional(),
@@ -69,6 +69,8 @@ type TipoFalhaConsulta = 'rede' | 'resposta_invalida' | 'inesperada';
  */
 @Injectable()
 export class IgnavService implements ConsultarPrecosVoo {
+  private static readonly CONCORRENCIA_MAXIMA_LINKS = 3;
+
   private readonly logger = new Logger(IgnavService.name);
 
   constructor(
@@ -123,33 +125,55 @@ export class IgnavService implements ConsultarPrecosVoo {
         .sort(
           (ofertaA, ofertaB) => ofertaA.price.amount - ofertaB.price.amount,
         );
-      let menorCotacao: CotacaoDeVoo | null = null;
+      const ofertasPendentes = [...ofertasVerificadas];
+      const cotacoes = await Promise.all(
+        Array.from(
+          {
+            length: Math.min(
+              IgnavService.CONCORRENCIA_MAXIMA_LINKS,
+              ofertasPendentes.length,
+            ),
+          },
+          async () => {
+            const cotacoesDoTrabalhador: CotacaoDeVoo[] = [];
 
-      for (const oferta of ofertasVerificadas) {
-        const links = await this.obterLinksCompra(oferta.ignav_id!);
-        const menorLink = links.reduce<LinkCompra | null>(
-          (menor, link) =>
-            !menor || Number(link.preco) < Number(menor.preco) ? link : menor,
+            while (ofertasPendentes.length > 0) {
+              const oferta = ofertasPendentes.shift();
+              if (!oferta) break;
+
+              const links = await this.obterLinksCompra(oferta.ignav_id!);
+              const menorLink = links.reduce<LinkCompra | null>(
+                (menor, link) =>
+                  !menor || Number(link.preco) < Number(menor.preco)
+                    ? link
+                    : menor,
+                null,
+              );
+
+              if (!menorLink) continue;
+
+              cotacoesDoTrabalhador.push({
+                preco: menorLink.preco,
+                moeda: menorLink.moeda,
+                ignavId: oferta.ignav_id!,
+                companhia: menorLink.fornecedor,
+              });
+            }
+
+            return cotacoesDoTrabalhador;
+          },
+        ),
+      );
+
+      return cotacoes
+        .flat()
+        .reduce<CotacaoDeVoo | null>(
+          (menor, cotacao) =>
+            !menor || Number(cotacao.preco) < Number(menor.preco)
+              ? cotacao
+              : menor,
           null,
         );
-
-        if (
-          !menorLink ||
-          (menorCotacao &&
-            Number(menorLink.preco) >= Number(menorCotacao.preco))
-        ) {
-          continue;
-        }
-
-        menorCotacao = {
-          preco: menorLink.preco,
-          moeda: menorLink.moeda,
-          ignavId: oferta.ignav_id,
-          companhia: menorLink.fornecedor,
-        };
-      }
-
-      return menorCotacao;
     } catch (erro: unknown) {
       if (erro instanceof ServiceUnavailableException) {
         throw erro;
@@ -191,19 +215,25 @@ export class IgnavService implements ConsultarPrecosVoo {
         );
       }
       const links = resultado.data.booking_options.flatMap((opcao) =>
-        opcao.links
-          .filter(
-            (link) =>
-              link.provider_type === 'airline' &&
-              link.price?.status === 'verified',
-          )
-          .map((link) => ({
-            fornecedor: link.provider_name,
-            tipoFornecedor: link.provider_type,
-            preco: link.price!.amount.toFixed(2),
-            moeda: link.price!.currency,
-            url: link.url,
-          })),
+        opcao.links.flatMap((link) => {
+          if (
+            link.provider_type !== 'airline' ||
+            !link.price ||
+            link.price.status !== 'verified'
+          ) {
+            return [];
+          }
+
+          return [
+            {
+              fornecedor: link.provider_name,
+              tipoFornecedor: link.provider_type,
+              preco: link.price.amount.toFixed(2),
+              moeda: link.price.currency,
+              url: link.url,
+            },
+          ];
+        }),
       );
       if (links.length === 0) {
         this.logger.warn(

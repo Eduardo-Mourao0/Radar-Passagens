@@ -154,6 +154,7 @@ export class IgnavService implements ConsultarPrecosVoo {
           (ofertaA, ofertaB) => ofertaA.price.amount - ofertaB.price.amount,
         );
       const ofertasPendentes = [...ofertasVerificadas];
+      let falhaLinks: Error | undefined;
       const cotacoes = await Promise.all(
         Array.from(
           {
@@ -179,6 +180,12 @@ export class IgnavService implements ConsultarPrecosVoo {
                   throw erro;
                 }
 
+                falhaLinks ??=
+                  erro instanceof Error
+                    ? erro
+                    : new ServiceUnavailableException(
+                        MENSAGENS_ERRO.ignavConsultaIndisponivel,
+                      );
                 continue;
               }
               const menorLink = links.reduce<LinkCompra | null>(
@@ -210,15 +217,18 @@ export class IgnavService implements ConsultarPrecosVoo {
           },
         ),
       );
-      return cotacoes
-        .flat()
-        .reduce<CotacaoDeVoo | null>(
-          (menor, cotacao) =>
-            !menor || Number(cotacao.preco) < Number(menor.preco)
-              ? cotacao
-              : menor,
-          null,
-        );
+      const cotacoesEncontradas = cotacoes.flat();
+      if (cotacoesEncontradas.length === 0 && falhaLinks !== undefined) {
+        throw falhaLinks;
+      }
+
+      return cotacoesEncontradas.reduce<CotacaoDeVoo | null>(
+        (menor, cotacao) =>
+          !menor || Number(cotacao.preco) < Number(menor.preco)
+            ? cotacao
+            : menor,
+        null,
+      );
     } catch (erro: unknown) {
       if (erro instanceof HttpException) {
         throw erro;

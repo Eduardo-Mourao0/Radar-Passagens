@@ -287,7 +287,7 @@ describe('IgnavService', () => {
     );
   });
 
-  it('repete links indisponíveis após 5 e 10 minutos', async () => {
+  it('repete links indisponíveis após 5 e 10 minutos e propaga a falha final', async () => {
     jest.useFakeTimers();
     const esperar = jest.spyOn(global, 'setTimeout');
     const httpService = {
@@ -319,10 +319,17 @@ describe('IgnavService', () => {
     const service = new IgnavService(httpService, configService);
 
     try {
-      const consulta = service.consultarMenorPreco(rota);
-      await jest.advanceTimersByTimeAsync(15 * 60_000);
+      const consulta = service
+        .consultarMenorPreco(rota)
+        .catch((erro: unknown) => erro);
+      await jest.advanceTimersByTimeAsync(5 * 60_000);
+      expect(httpService.post).toHaveBeenCalledTimes(3);
 
-      await expect(consulta).resolves.toBeNull();
+      await jest.advanceTimersByTimeAsync(10 * 60_000);
+
+      const erro = await consulta;
+
+      expect(erro).toBeInstanceOf(ServiceUnavailableException);
       expect(httpService.post).toHaveBeenCalledTimes(4);
       expect(esperar).toHaveBeenNthCalledWith(
         1,

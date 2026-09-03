@@ -274,6 +274,17 @@ describe('IgnavService', () => {
       ignavId: 'ignav-valido',
     });
     expect(consultaConcluida).toBe(true);
+    expect(httpService.post).toHaveBeenCalledTimes(3);
+    expect(httpService.post).toHaveBeenCalledWith(
+      'https://ignav.com/api/fares/booking-links',
+      { ignav_id: 'ignav-com-falha' },
+      expect.any(Object),
+    );
+    expect(httpService.post).toHaveBeenCalledWith(
+      'https://ignav.com/api/fares/booking-links',
+      { ignav_id: 'ignav-valido' },
+      expect.any(Object),
+    );
   });
 
   it('repete links indisponíveis após 5 e 10 minutos', async () => {
@@ -326,6 +337,52 @@ describe('IgnavService', () => {
     } finally {
       esperar.mockRestore();
       jest.useRealTimers();
+    }
+  });
+
+  it('não repete links quando a Ignav atinge o limite de requisições', async () => {
+    const esperar = jest.spyOn(global, 'setTimeout');
+    const httpService = {
+      post: jest.fn((url: string) => {
+        if (url.endsWith('/booking-links')) {
+          return throwError(() => criarErroAxios(HttpStatus.TOO_MANY_REQUESTS));
+        }
+
+        return of({
+          data: {
+            itineraries: [
+              {
+                ignav_id: 'ignav-com-limite',
+                price: { amount: 300, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: 'GOL',
+                      marketing_carrier_code: 'G3',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        });
+      }),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    try {
+      const erro = await service
+        .consultarMenorPreco(rota)
+        .catch((erro: unknown) => erro);
+
+      expect(erro).toBeInstanceOf(HttpException);
+      expect((erro as HttpException).getStatus()).toBe(
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+      expect(httpService.post).toHaveBeenCalledTimes(2);
+      expect(esperar).not.toHaveBeenCalled();
+    } finally {
+      esperar.mockRestore();
     }
   });
 

@@ -96,6 +96,11 @@ type TipoFalhaConsulta =
 @Injectable()
 export class IgnavService implements ConsultarPrecosVoo {
   private static readonly CONCORRENCIA_MAXIMA_LINKS = 3;
+  private static readonly TENTATIVAS_MAXIMAS_LINKS = 3;
+  private static readonly INTERVALOS_RETRY_LINKS_MS = [
+    5 * 60_000,
+    10 * 60_000,
+  ] as const;
 
   private readonly logger = new Logger(IgnavService.name);
 
@@ -149,8 +154,7 @@ export class IgnavService implements ConsultarPrecosVoo {
           (ofertaA, ofertaB) => ofertaA.price.amount - ofertaB.price.amount,
         );
       const ofertasPendentes = [...ofertasVerificadas];
-      let houveFalha = false;
-      let falha: unknown;
+      let falhaLinks: Error | undefined;
       const cotacoes = await Promise.all(
         Array.from(
           {
@@ -162,17 +166,27 @@ export class IgnavService implements ConsultarPrecosVoo {
           async () => {
             const cotacoesDoTrabalhador: CotacaoDeVoo[] = [];
 
-            while (!houveFalha && ofertasPendentes.length > 0) {
+            while (ofertasPendentes.length > 0) {
               const oferta = ofertasPendentes.shift();
               if (!oferta) break;
 
               let links: LinkCompra[];
               try {
-                links = await this.obterLinksCompra(oferta.ignav_id!);
+                links = await this.obterLinksCompraComTentativas(
+                  oferta.ignav_id!,
+                );
               } catch (erro: unknown) {
-                houveFalha = true;
-                falha = erro;
-                break;
+                if (erro instanceof HttpException && erro.getStatus() === 429) {
+                  throw erro;
+                }
+
+                falhaLinks ??=
+                  erro instanceof Error
+                    ? erro
+                    : new ServiceUnavailableException(
+                        MENSAGENS_ERRO.ignavConsultaIndisponivel,
+                      );
+                continue;
               }
               const menorLink = links.reduce<LinkCompra | null>(
                 (menor, link) =>
@@ -203,17 +217,18 @@ export class IgnavService implements ConsultarPrecosVoo {
           },
         ),
       );
-      if (houveFalha) throw falha;
+      const cotacoesEncontradas = cotacoes.flat();
+      if (cotacoesEncontradas.length === 0 && falhaLinks !== undefined) {
+        throw falhaLinks;
+      }
 
-      return cotacoes
-        .flat()
-        .reduce<CotacaoDeVoo | null>(
-          (menor, cotacao) =>
-            !menor || Number(cotacao.preco) < Number(menor.preco)
-              ? cotacao
-              : menor,
-          null,
-        );
+      return cotacoesEncontradas.reduce<CotacaoDeVoo | null>(
+        (menor, cotacao) =>
+          !menor || Number(cotacao.preco) < Number(menor.preco)
+            ? cotacao
+            : menor,
+        null,
+      );
     } catch (erro: unknown) {
       if (erro instanceof HttpException) {
         throw erro;
@@ -280,6 +295,42 @@ export class IgnavService implements ConsultarPrecosVoo {
       if (erro instanceof HttpException) throw erro;
       this.lancarFalhaDaIgnav(erro, 'obter_links_compra');
     }
+  }
+
+  private async obterLinksCompraComTentativas(
+    ignavId: string,
+  ): Promise<LinkCompra[]> {
+    for (
+      let tentativa = 1;
+      tentativa <= IgnavService.TENTATIVAS_MAXIMAS_LINKS;
+      tentativa += 1
+    ) {
+      try {
+        return await this.obterLinksCompra(ignavId);
+      } catch (erro: unknown) {
+        if (
+          !(erro instanceof ServiceUnavailableException) ||
+          tentativa === IgnavService.TENTATIVAS_MAXIMAS_LINKS
+        ) {
+          throw erro;
+        }
+
+        const intervalo = IgnavService.INTERVALOS_RETRY_LINKS_MS[tentativa - 1];
+        this.logger.warn(
+          JSON.stringify({
+            evento: 'ignav_links_compra_retentativa_agendada',
+            tentativa,
+            proximaTentativa: tentativa + 1,
+            intervaloMs: intervalo,
+          }),
+        );
+        await new Promise<void>((resolve) => setTimeout(resolve, intervalo));
+      }
+    }
+
+    throw new ServiceUnavailableException(
+      MENSAGENS_ERRO.ignavConsultaIndisponivel,
+    );
   }
 
   private lancarFalhaDaIgnav(erro: unknown, operacao: OperacaoIgnav): never {

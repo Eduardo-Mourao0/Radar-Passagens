@@ -209,13 +209,13 @@ describe('IgnavService', () => {
     expect(maiorConcorrencia).toBe(3);
   });
 
-  it('aguarda as consultas iniciadas antes de propagar uma falha', async () => {
+  it('mantém as cotações oficiais quando outra consulta de link falha', async () => {
     let consultaConcluida = false;
     const httpService = {
       post: jest.fn((url: string, corpo: { ignav_id?: string }) => {
         if (url.endsWith('/booking-links')) {
           if (corpo.ignav_id === 'ignav-com-falha') {
-            return throwError(() => new Error('falha na Ignav'));
+            return throwError(() => criarErroAxios(HttpStatus.NOT_FOUND));
           }
 
           return of({
@@ -269,10 +269,128 @@ describe('IgnavService', () => {
     } as unknown as HttpService;
     const service = new IgnavService(httpService, configService);
 
-    await expect(service.consultarMenorPreco(rota)).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(service.consultarMenorPreco(rota)).resolves.toMatchObject({
+      preco: '300.00',
+      ignavId: 'ignav-valido',
+    });
     expect(consultaConcluida).toBe(true);
+    expect(httpService.post).toHaveBeenCalledTimes(3);
+    expect(httpService.post).toHaveBeenCalledWith(
+      'https://ignav.com/api/fares/booking-links',
+      { ignav_id: 'ignav-com-falha' },
+      expect.any(Object),
+    );
+    expect(httpService.post).toHaveBeenCalledWith(
+      'https://ignav.com/api/fares/booking-links',
+      { ignav_id: 'ignav-valido' },
+      expect.any(Object),
+    );
+  });
+
+  it('repete links indisponíveis após 5 e 10 minutos e propaga a falha final', async () => {
+    jest.useFakeTimers();
+    const esperar = jest.spyOn(global, 'setTimeout');
+    const httpService = {
+      post: jest.fn((url: string) => {
+        if (url.endsWith('/booking-links')) {
+          return throwError(() => criarErroAxios(undefined, 'ETIMEDOUT'));
+        }
+
+        return of({
+          data: {
+            itineraries: [
+              {
+                ignav_id: 'ignav-indisponivel',
+                price: { amount: 300, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: 'GOL',
+                      marketing_carrier_code: 'G3',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        });
+      }),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    try {
+      const consulta = service
+        .consultarMenorPreco(rota)
+        .catch((erro: unknown) => erro);
+      await jest.advanceTimersByTimeAsync(5 * 60_000);
+      expect(httpService.post).toHaveBeenCalledTimes(3);
+
+      await jest.advanceTimersByTimeAsync(10 * 60_000);
+
+      const erro = await consulta;
+
+      expect(erro).toBeInstanceOf(ServiceUnavailableException);
+      expect(httpService.post).toHaveBeenCalledTimes(4);
+      expect(esperar).toHaveBeenNthCalledWith(
+        1,
+        expect.any(Function),
+        5 * 60_000,
+      );
+      expect(esperar).toHaveBeenNthCalledWith(
+        2,
+        expect.any(Function),
+        10 * 60_000,
+      );
+    } finally {
+      esperar.mockRestore();
+      jest.useRealTimers();
+    }
+  });
+
+  it('não repete links quando a Ignav atinge o limite de requisições', async () => {
+    const esperar = jest.spyOn(global, 'setTimeout');
+    const httpService = {
+      post: jest.fn((url: string) => {
+        if (url.endsWith('/booking-links')) {
+          return throwError(() => criarErroAxios(HttpStatus.TOO_MANY_REQUESTS));
+        }
+
+        return of({
+          data: {
+            itineraries: [
+              {
+                ignav_id: 'ignav-com-limite',
+                price: { amount: 300, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: 'GOL',
+                      marketing_carrier_code: 'G3',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        });
+      }),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    try {
+      const erro = await service
+        .consultarMenorPreco(rota)
+        .catch((erro: unknown) => erro);
+
+      expect(erro).toBeInstanceOf(HttpException);
+      expect((erro as HttpException).getStatus()).toBe(
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+      expect(httpService.post).toHaveBeenCalledTimes(2);
+      expect(esperar).not.toHaveBeenCalled();
+    } finally {
+      esperar.mockRestore();
+    }
   });
 
   it('consulta ida e volta pelo endpoint específico', async () => {

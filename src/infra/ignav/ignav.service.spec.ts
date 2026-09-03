@@ -209,13 +209,13 @@ describe('IgnavService', () => {
     expect(maiorConcorrencia).toBe(3);
   });
 
-  it('aguarda as consultas iniciadas antes de propagar uma falha', async () => {
+  it('mantém as cotações oficiais quando outra consulta de link falha', async () => {
     let consultaConcluida = false;
     const httpService = {
       post: jest.fn((url: string, corpo: { ignav_id?: string }) => {
         if (url.endsWith('/booking-links')) {
           if (corpo.ignav_id === 'ignav-com-falha') {
-            return throwError(() => new Error('falha na Ignav'));
+            return throwError(() => criarErroAxios(HttpStatus.NOT_FOUND));
           }
 
           return of({
@@ -269,10 +269,64 @@ describe('IgnavService', () => {
     } as unknown as HttpService;
     const service = new IgnavService(httpService, configService);
 
-    await expect(service.consultarMenorPreco(rota)).rejects.toBeInstanceOf(
-      ServiceUnavailableException,
-    );
+    await expect(service.consultarMenorPreco(rota)).resolves.toMatchObject({
+      preco: '300.00',
+      ignavId: 'ignav-valido',
+    });
     expect(consultaConcluida).toBe(true);
+  });
+
+  it('repete links indisponíveis após 5 e 10 minutos', async () => {
+    jest.useFakeTimers();
+    const esperar = jest.spyOn(global, 'setTimeout');
+    const httpService = {
+      post: jest.fn((url: string) => {
+        if (url.endsWith('/booking-links')) {
+          return throwError(() => criarErroAxios(undefined, 'ETIMEDOUT'));
+        }
+
+        return of({
+          data: {
+            itineraries: [
+              {
+                ignav_id: 'ignav-indisponivel',
+                price: { amount: 300, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: 'GOL',
+                      marketing_carrier_code: 'G3',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        });
+      }),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    try {
+      const consulta = service.consultarMenorPreco(rota);
+      await jest.advanceTimersByTimeAsync(15 * 60_000);
+
+      await expect(consulta).resolves.toBeNull();
+      expect(httpService.post).toHaveBeenCalledTimes(4);
+      expect(esperar).toHaveBeenNthCalledWith(
+        1,
+        expect.any(Function),
+        5 * 60_000,
+      );
+      expect(esperar).toHaveBeenNthCalledWith(
+        2,
+        expect.any(Function),
+        10 * 60_000,
+      );
+    } finally {
+      esperar.mockRestore();
+      jest.useRealTimers();
+    }
   });
 
   it('consulta ida e volta pelo endpoint específico', async () => {

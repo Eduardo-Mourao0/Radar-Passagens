@@ -35,9 +35,7 @@ export class ReativarRotaUseCase {
       rota.id,
       comando.usuarioId,
     );
-    const situacaoCotacao =
-      await this.verificarPrecoRota.executarResiliente(rotaReativada);
-
-    return { ...rotaReativada, situacaoCotacao };
+    void this.verificarPrecoRota.executarResiliente(rotaReativada);
+    return { ...rotaReativada, situacaoCotacao: 'NAO_SOLICITADA' };
   }
 }

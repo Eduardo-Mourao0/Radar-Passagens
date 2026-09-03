@@ -34,14 +34,17 @@ export class CriarRotaUseCase {
           rotaExistente.id,
           comando.usuarioId,
         );
-        return this.verificarPreco(rotaReativada);
+        void this.verificarPreco(rotaReativada);
+        return { ...rotaReativada, situacaoCotacao: 'NAO_SOLICITADA' };
       }
 
       throw new ConflictException(MENSAGENS_ERRO.rotaDuplicada);
     }
 
     const rotaCriada = await this.rotasRepository.criar(novaRota);
-    return this.verificarPreco(rotaCriada);
+    // A consulta pode levar minutos quando o provedor está instável; não bloqueie o cadastro.
+    void this.verificarPreco(rotaCriada);
+    return { ...rotaCriada, situacaoCotacao: 'NAO_SOLICITADA' };
   }
 
   private async verificarPreco(rota: Rota): Promise<RotaComSituacaoCotacao> {

@@ -68,7 +68,13 @@ export class PrismaRotasRepository implements RotasRepository {
     const rotas = await this.prisma.rota.findMany({
       where: { usuarioId },
       orderBy: { criadoEm: 'desc' },
-      include: { alertaPreco: true },
+      include: {
+        alertaPreco: true,
+        historicos: {
+          orderBy: { coletadoEm: 'desc' },
+          take: 1,
+        },
+      },
     });
 
     return rotas.map((rota) => this.mapearRotaComAlerta(rota));
@@ -176,7 +182,10 @@ export class PrismaRotasRepository implements RotasRepository {
   }
 
   private mapearRotaComAlerta(
-    rota: PrismaRota & { alertaPreco: PrismaAlertaPreco | null },
+    rota: PrismaRota & {
+      alertaPreco: PrismaAlertaPreco | null;
+      historicos: PrismaHistoricoPreco[];
+    },
   ): RotaComAlerta {
     return {
       ...this.mapearRota(rota),
@@ -185,6 +194,9 @@ export class PrismaRotasRepository implements RotasRepository {
             precoAlvo: rota.alertaPreco.precoAlvo.toString(),
             disparado: rota.alertaPreco.disparado,
           }
+        : null,
+      ultimoPreco: rota.historicos[0]
+        ? this.mapearHistorico(rota.historicos[0])
         : null,
     };
   }

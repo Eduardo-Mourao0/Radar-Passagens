@@ -15,6 +15,7 @@ import {
   ConsultarPrecosVoo,
   CotacaoDeVoo,
   LinkCompra,
+  OpcoesConsultaPreco,
 } from '../../application/rotas/ports/consultar-precos-voo.port';
 import { MENSAGENS_ERRO } from '../../domain/errors/mensagens-erro';
 import { Rota } from '../../domain/rotas/entities/rota.entity';
@@ -109,7 +110,10 @@ export class IgnavService implements ConsultarPrecosVoo {
     private readonly configService: ConfigService,
   ) {}
 
-  async consultarMenorPreco(rota: Rota): Promise<CotacaoDeVoo | null> {
+  async consultarMenorPreco(
+    rota: Rota,
+    opcoes: OpcoesConsultaPreco = {},
+  ): Promise<CotacaoDeVoo | null> {
     const apiKey = this.configService.getOrThrow<string>('IGNAV_API_KEY');
     const baseUrl = this.configService.getOrThrow<string>('IGNAV_BASE_URL');
     const dataIda = this.formatarData(rota.dataIda);
@@ -174,6 +178,7 @@ export class IgnavService implements ConsultarPrecosVoo {
               try {
                 links = await this.obterLinksCompraComTentativas(
                   oferta.ignav_id!,
+                  opcoes.repetirLinks ?? true,
                 );
               } catch (erro: unknown) {
                 if (erro instanceof HttpException && erro.getStatus() === 429) {
@@ -299,18 +304,18 @@ export class IgnavService implements ConsultarPrecosVoo {
 
   private async obterLinksCompraComTentativas(
     ignavId: string,
+    repetir: boolean,
   ): Promise<LinkCompra[]> {
-    for (
-      let tentativa = 1;
-      tentativa <= IgnavService.TENTATIVAS_MAXIMAS_LINKS;
-      tentativa += 1
-    ) {
+    const tentativasMaximas = repetir
+      ? IgnavService.TENTATIVAS_MAXIMAS_LINKS
+      : 1;
+    for (let tentativa = 1; tentativa <= tentativasMaximas; tentativa += 1) {
       try {
         return await this.obterLinksCompra(ignavId);
       } catch (erro: unknown) {
         if (
           !(erro instanceof ServiceUnavailableException) ||
-          tentativa === IgnavService.TENTATIVAS_MAXIMAS_LINKS
+          tentativa === tentativasMaximas
         ) {
           throw erro;
         }

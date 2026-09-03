@@ -79,7 +79,7 @@ describe('Casos de uso de rotas', () => {
         dataIda: '2026-12-10',
         dataVolta: '2026-12-20',
       }),
-    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'ATUALIZADA' });
+    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'NAO_SOLICITADA' });
     expect(repositorio.criar).toHaveBeenCalledWith({
       chaveMonitoramento: 'BSB:GRU:2026-12-10:2026-12-20',
       usuarioId: rota.usuarioId,
@@ -131,7 +131,7 @@ describe('Casos de uso de rotas', () => {
         dataIda: '2026-12-10',
         dataVolta: '2026-12-20',
       }),
-    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'ATUALIZADA' });
+    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'NAO_SOLICITADA' });
     expect(repositorio.reativar).toHaveBeenCalledWith(
       rotaInativa.id,
       rota.usuarioId,
@@ -153,13 +153,14 @@ describe('Casos de uso de rotas', () => {
         dataIda: '2026-12-10',
         dataVolta: '2026-12-20',
       }),
-    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'INDISPONIVEL' });
+    ).resolves.toMatchObject({ ...rota, situacaoCotacao: 'NAO_SOLICITADA' });
   });
 
   it('lista as rotas', async () => {
     const rotaComAlerta = {
       ...rota,
       alertaPreco: { precoAlvo: '1500.00', disparado: false },
+      ultimoPreco: null,
     };
     repositorio.listar.mockResolvedValue([rotaComAlerta]);
 

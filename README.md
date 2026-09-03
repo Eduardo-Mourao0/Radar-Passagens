@@ -118,7 +118,7 @@ Cada pessoa inicia o bot por um link gerado no cadastro. O bot envia um código 
 | Método   | Rota                      | Descrição                                        |
 | -------- | ------------------------- | ------------------------------------------------ |
 | `POST`   | `/rotas`                  | Cadastra uma rota para monitoramento.            |
-| `GET`    | `/rotas`                  | Lista as rotas cadastradas, com suas metas.      |
+| `GET`    | `/rotas`                  | Lista as rotas, metas e última cotação.          |
 | `PATCH`  | `/rotas/:id/desativar`    | Interrompe o monitoramento de uma rota.          |
 | `PATCH`  | `/rotas/:id/reativar`     | Retoma o monitoramento de uma rota.              |
 | `DELETE` | `/rotas/:id`              | Exclui uma rota e todos os dados vinculados.     |
@@ -126,6 +126,7 @@ Cada pessoa inicia o bot por um link gerado no cadastro. O bot envia um código 
 | `GET`    | `/rotas/:id/links-compra` | Retorna links e preços oficiais das companhias.  |
 | `PUT`    | `/rotas/:id/alerta-preco` | Define o preço-alvo para alertar sobre uma rota. |
 | `POST`   | `/rotas/verificar-precos` | Executa a coleta manualmente em desenvolvimento. |
+| `POST`   | `/rotas/:id/verificar-preco` | Atualiza uma única rota e retorna a cotação.  |
 | `POST`   | `/auth/cadastros`          | Inicia o cadastro e a confirmação do telefone no Telegram. |
 | `POST`   | `/auth/login`              | Autentica com telefone e PIN de quatro dígitos. |
 | `POST`   | `/auth/refresh`            | Renova a sessão pelo cookie HttpOnly. |

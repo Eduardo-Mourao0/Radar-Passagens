@@ -20,6 +20,7 @@ describe('PrismaRotasRepository', () => {
               precoAlvo: { toString: () => '1500.00' },
               disparado: false,
             },
+            historicos: [],
           },
         ]),
       },
@@ -31,11 +32,18 @@ describe('PrismaRotasRepository', () => {
       expect.objectContaining({
         id: 'rota-1',
         alertaPreco: { precoAlvo: '1500.00', disparado: false },
+        ultimoPreco: null,
       }),
     ]);
     expect(prismaMock.rota.findMany).toHaveBeenCalledWith({
       orderBy: { criadoEm: 'desc' },
-      include: { alertaPreco: true },
+      include: {
+        alertaPreco: true,
+        historicos: {
+          orderBy: { coletadoEm: 'desc' },
+          take: 1,
+        },
+      },
       where: { usuarioId: 'usuario-1' },
     });
   });

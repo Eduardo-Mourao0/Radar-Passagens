@@ -114,6 +114,7 @@ export type AlertaPreco = Readonly<{
 export type RotaComAlerta = Rota &
   Readonly<{
     alertaPreco: Pick<AlertaPreco, 'precoAlvo' | 'disparado'> | null;
+    ultimoPreco: HistoricoPreco | null;
   }>;
 
 export type NovoAlertaPreco = Readonly<{

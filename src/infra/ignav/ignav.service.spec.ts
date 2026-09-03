@@ -65,6 +65,41 @@ describe('IgnavService', () => {
     jest.clearAllMocks();
   });
 
+  it('não repete a consulta de links em uma atualização manual', async () => {
+    const httpService = {
+      post: jest.fn((url: string) => {
+        if (url.endsWith('/booking-links')) {
+          return throwError(() => criarErroAxios(undefined, 'ETIMEDOUT'));
+        }
+
+        return of({
+          data: {
+            itineraries: [
+              {
+                ignav_id: 'ignav-1',
+                price: { amount: 350, currency: 'BRL', status: 'verified' },
+                outbound: {
+                  segments: [
+                    {
+                      operating_carrier_name: 'GOL',
+                      marketing_carrier_code: 'G3',
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        });
+      }),
+    } as unknown as HttpService;
+    const service = new IgnavService(httpService, configService);
+
+    await expect(
+      service.consultarMenorPreco(rota, { repetirLinks: false }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(httpService.post).toHaveBeenCalledTimes(2);
+  });
+
   it('persiste o menor preço verificado entre os sites oficiais', async () => {
     const rotaIdaEVolta = {
       ...rota,

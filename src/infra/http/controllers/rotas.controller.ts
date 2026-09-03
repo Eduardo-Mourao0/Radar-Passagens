@@ -23,6 +23,7 @@ import { ListarHistoricoRotaUseCase } from '../../../application/rotas/use-cases
 import { ListarRotasUseCase } from '../../../application/rotas/use-cases/listar-rotas.use-case';
 import { ObterLinksCompraRotaUseCase } from '../../../application/rotas/use-cases/obter-links-compra-rota.use-case';
 import { ReativarRotaUseCase } from '../../../application/rotas/use-cases/reativar-rota.use-case';
+import { VerificarPrecoRotaUseCase } from '../../../application/rotas/use-cases/verificar-preco-rota.use-case';
 import { AutenticacaoGuard } from '../guards/autenticacao.guard';
 import { ZodValidationPipe } from '../pipes/zod-validation.pipe';
 import {
@@ -51,6 +52,7 @@ export class RotasController {
     private readonly listarHistoricoRotaUseCase: ListarHistoricoRotaUseCase,
     private readonly obterLinksCompraRotaUseCase: ObterLinksCompraRotaUseCase,
     private readonly priceCheckJob: PriceCheckJob,
+    private readonly verificarPrecoRotaUseCase: VerificarPrecoRotaUseCase,
   ) {}
 
   @Post()
@@ -144,6 +146,17 @@ export class RotasController {
   async verificarPrecos(): Promise<{ mensagem: string }> {
     await this.priceCheckJob.executar();
     return { mensagem: 'Verificação de preços concluída.' };
+  }
+
+  @Post(':id/verificar-preco')
+  verificarPreco(
+    @Param(new ZodValidationPipe(rotaIdParamsSchema)) params: RotaIdParams,
+    @Req() request: Request,
+  ) {
+    return this.verificarPrecoRotaUseCase.executarParaUsuario(
+      params.id,
+      this.obterUsuarioId(request),
+    );
   }
 
   private obterUsuarioId(request: Request): string {

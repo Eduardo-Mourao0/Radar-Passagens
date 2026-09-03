@@ -20,7 +20,14 @@ export type LinkCompra = Readonly<{
   url: string;
 }>;
 
+export type OpcoesConsultaPreco = Readonly<{
+  repetirLinks?: boolean;
+}>;
+
 export interface ConsultarPrecosVoo {
-  consultarMenorPreco(rota: Rota): Promise<CotacaoDeVoo | null>;
+  consultarMenorPreco(
+    rota: Rota,
+    opcoes?: OpcoesConsultaPreco,
+  ): Promise<CotacaoDeVoo | null>;
   obterLinksCompra(ignavId: string): Promise<LinkCompra[]>;
 }

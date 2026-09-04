@@ -15,6 +15,10 @@ describe('PrismaRotasRepository', () => {
             dataIda: new Date(2026, 11, 10),
             dataVolta: null,
             ativa: true,
+            situacaoCotacao: 'PENDENTE',
+            ultimaCotacaoEm: null,
+            proximaTentativaCotacaoEm: null,
+            tentativasCotacao: 0,
             criadoEm: new Date(2026, 0, 1),
             alertaPreco: {
               precoAlvo: { toString: () => '1500.00' },
@@ -33,6 +37,10 @@ describe('PrismaRotasRepository', () => {
         id: 'rota-1',
         alertaPreco: { precoAlvo: '1500.00', disparado: false },
         ultimoPreco: null,
+        situacaoCotacao: 'PENDENTE',
+        ultimaCotacaoEm: null,
+        proximaTentativaCotacaoEm: null,
+        tentativasCotacao: 0,
       }),
     ]);
     expect(prismaMock.rota.findMany).toHaveBeenCalledWith({
@@ -45,6 +53,54 @@ describe('PrismaRotasRepository', () => {
         },
       },
       where: { usuarioId: 'usuario-1' },
+    });
+  });
+
+  it('lista somente as retentativas de cotação vencidas', async () => {
+    const prismaMock = {
+      rota: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const prisma = prismaMock as unknown as PrismaService;
+    const repositorio = new PrismaRotasRepository(prisma);
+    const agora = new Date(2026, 0, 1, 12);
+
+    await expect(
+      repositorio.listarComRetentativaCotacaoPendente(agora, 5),
+    ).resolves.toEqual([]);
+    expect(prismaMock.rota.findMany).toHaveBeenCalledWith({
+      where: {
+        ativa: true,
+        situacaoCotacao: 'INDISPONIVEL',
+        proximaTentativaCotacaoEm: { lte: agora },
+      },
+      orderBy: { proximaTentativaCotacaoEm: 'asc' },
+      take: 5,
+    });
+  });
+
+  it('persiste a situação e o próximo retry da cotação', async () => {
+    const prismaMock = {
+      rota: {
+        update: jest.fn().mockResolvedValue({}),
+      },
+    };
+    const prisma = prismaMock as unknown as PrismaService;
+    const repositorio = new PrismaRotasRepository(prisma);
+    const dados = {
+      situacaoCotacao: 'INDISPONIVEL' as const,
+      ultimaCotacaoEm: new Date(2026, 0, 1, 12),
+      proximaTentativaCotacaoEm: new Date(2026, 0, 1, 12, 1),
+      tentativasCotacao: 1,
+    };
+
+    await expect(
+      repositorio.atualizarSituacaoCotacao('rota-1', dados),
+    ).resolves.toBeUndefined();
+    expect(prismaMock.rota.update).toHaveBeenCalledWith({
+      where: { id: 'rota-1' },
+      data: dados,
     });
   });
 

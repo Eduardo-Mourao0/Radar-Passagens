@@ -1,5 +1,6 @@
 import {
   AlertaPreco,
+  AtualizacaoSituacaoCotacao,
   HistoricoPreco,
   NovoAlertaPreco,
   NovaRota,
@@ -21,11 +22,19 @@ export interface RotasRepository {
   excluir(id: string, usuarioId: string): Promise<void>;
   listar(usuarioId: string): Promise<RotaComAlerta[]>;
   listarAtivas(): Promise<Rota[]>;
+  listarComRetentativaCotacaoPendente(
+    dataReferencia: Date,
+    limite: number,
+  ): Promise<Rota[]>;
   desativarRotasComDataIdaPassada(dataReferencia: Date): Promise<number>;
   buscarPorId(id: string, usuarioId: string): Promise<Rota | null>;
   listarHistorico(rotaId: string, usuarioId: string): Promise<HistoricoPreco[]>;
   buscarAlertaPreco(rotaId: string): Promise<AlertaPreco | null>;
   salvarAlertaPreco(dados: NovoAlertaPreco): Promise<AlertaPreco>;
   atualizarAlertaDisparado(id: string, disparado: boolean): Promise<void>;
+  atualizarSituacaoCotacao(
+    id: string,
+    dados: AtualizacaoSituacaoCotacao,
+  ): Promise<void>;
   registrarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco>;
 }

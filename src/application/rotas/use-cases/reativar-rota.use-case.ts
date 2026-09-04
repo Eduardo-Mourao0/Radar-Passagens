@@ -29,13 +29,13 @@ export class ReativarRotaUseCase {
       throw new RegraDeNegocioError(MENSAGENS_ERRO.rotaComDataIdaPassada);
     }
 
-    if (rota.ativa) return { ...rota, situacaoCotacao: 'NAO_SOLICITADA' };
+    if (rota.ativa) return { ...rota, situacaoCotacao: 'PENDENTE' };
 
     const rotaReativada = await this.rotasRepository.reativar(
       rota.id,
       comando.usuarioId,
     );
     void this.verificarPrecoRota.executarResiliente(rotaReativada);
-    return { ...rotaReativada, situacaoCotacao: 'NAO_SOLICITADA' };
+    return { ...rotaReativada, situacaoCotacao: 'PENDENTE' };
   }
 }

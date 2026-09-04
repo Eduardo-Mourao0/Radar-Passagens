@@ -1,6 +1,9 @@
 import { MENSAGENS_ERRO } from '../../errors/mensagens-erro';
 import { RegraDeNegocioError } from '../../errors/regra-de-negocio.error';
 
+export type SituacaoCotacao =
+  'PENDENTE' | 'ATUALIZADA' | 'SEM_OFERTA' | 'INDISPONIVEL';
+
 export type Rota = Readonly<{
   id: string;
   usuarioId: string;
@@ -10,6 +13,10 @@ export type Rota = Readonly<{
   dataIda: Date;
   dataVolta: Date | null;
   ativa: boolean;
+  situacaoCotacao: SituacaoCotacao;
+  ultimaCotacaoEm: Date | null;
+  proximaTentativaCotacaoEm: Date | null;
+  tentativasCotacao: number;
   criadoEm: Date;
 }>;
 
@@ -27,6 +34,13 @@ export type NovaRota = Readonly<{
   destino: string;
   dataIda: Date;
   dataVolta: Date | null;
+}>;
+
+export type AtualizacaoSituacaoCotacao = Readonly<{
+  situacaoCotacao: SituacaoCotacao;
+  ultimaCotacaoEm: Date;
+  proximaTentativaCotacaoEm: Date | null;
+  tentativasCotacao: number;
 }>;
 
 export class RotaEntity {

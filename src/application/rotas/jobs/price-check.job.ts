@@ -135,6 +135,10 @@ export class PriceCheckJob {
       this.logger.log(
         JSON.stringify({ evento: 'retentativas_cotacao_concluidas' }),
       );
+    } catch {
+      this.logger.error(
+        JSON.stringify({ evento: 'retentativas_cotacao_falharam' }),
+      );
     } finally {
       this.retentativasEmAndamento = false;
     }

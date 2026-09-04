@@ -21,6 +21,7 @@ describe('VerificarPrecoRotaUseCase', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    rotasRepository.atualizarSituacaoCotacao.mockResolvedValue(undefined);
     const modulo = await Test.createTestingModule({
       providers: [
         VerificarPrecoRotaUseCase,
@@ -122,6 +123,16 @@ describe('VerificarPrecoRotaUseCase', () => {
         proximaTentativaCotacaoEm: expect.any(Date),
       }),
     );
+  });
+
+  it('preserva a falha da cotação quando não consegue persistir a situação', async () => {
+    const erroDaCotacao = new Error('Ignav indisponível');
+    consultarPrecosVoo.consultarMenorPreco.mockRejectedValue(erroDaCotacao);
+    rotasRepository.atualizarSituacaoCotacao.mockRejectedValue(
+      new Error('banco indisponível'),
+    );
+
+    await expect(useCase.execute(rota)).rejects.toBe(erroDaCotacao);
   });
 
   it('atualiza somente a rota pertencente ao usuário e devolve sua cotação', async () => {

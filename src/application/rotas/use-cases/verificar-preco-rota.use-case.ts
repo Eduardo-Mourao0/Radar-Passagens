@@ -76,7 +76,16 @@ export class VerificarPrecoRotaUseCase {
         historico: resultado.historico,
       };
     } catch (erro: unknown) {
-      await this.atualizarSituacaoCotacao(rota, 'INDISPONIVEL');
+      try {
+        await this.atualizarSituacaoCotacao(rota, 'INDISPONIVEL');
+      } catch {
+        this.logger.error(
+          JSON.stringify({
+            evento: 'atualizacao_situacao_cotacao_falhou',
+            rotaId: rota.id,
+          }),
+        );
+      }
       throw erro;
     }
   }

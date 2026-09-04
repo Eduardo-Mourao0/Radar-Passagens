@@ -261,6 +261,27 @@ describe('PriceCheckJob', () => {
     await primeiraExecucao;
   });
 
+  it('registra falha ao buscar as retentativas sem propagar o erro', async () => {
+    const rotasRepository = {
+      listarComRetentativaCotacaoPendente: jest
+        .fn()
+        .mockRejectedValue(new Error('banco indisponível')),
+    };
+    const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    const job = new PriceCheckJob(
+      rotasRepository,
+      { execute: jest.fn() },
+      usuariosRepository,
+    );
+
+    await expect(job.executarRetentativas()).resolves.toBeUndefined();
+
+    expect(errorLog).toHaveBeenCalledWith(
+      JSON.stringify({ evento: 'retentativas_cotacao_falharam' }),
+    );
+    errorLog.mockRestore();
+  });
+
   it('avisa quando não encontra o dono de uma rota ativa no lote', async () => {
     const rotasRepository = {
       desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),

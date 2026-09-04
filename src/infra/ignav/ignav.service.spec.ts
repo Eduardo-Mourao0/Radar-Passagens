@@ -230,7 +230,7 @@ describe('IgnavService', () => {
     });
   });
 
-  it('limita a concorrência ao consultar links oficiais', async () => {
+  it('limita as consultas de links aos três itinerários mais baratos', async () => {
     let consultasEmAndamento = 0;
     let maiorConcorrencia = 0;
     const httpService = {
@@ -291,7 +291,8 @@ describe('IgnavService', () => {
 
     await service.consultarMenorPreco(rota);
 
-    expect(maiorConcorrencia).toBe(3);
+    expect(maiorConcorrencia).toBe(1);
+    expect(httpService.post).toHaveBeenCalledTimes(4);
   });
 
   it('mantém as cotações oficiais quando outra consulta de link falha', async () => {

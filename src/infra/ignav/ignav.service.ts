@@ -96,7 +96,8 @@ type TipoFalhaConsulta =
  */
 @Injectable()
 export class IgnavService implements ConsultarPrecosVoo {
-  private static readonly CONCORRENCIA_MAXIMA_LINKS = 3;
+  private static readonly CONCORRENCIA_MAXIMA_LINKS = 1;
+  private static readonly MAXIMO_OFERTAS_PARA_LINKS = 3;
   private static readonly TENTATIVAS_MAXIMAS_LINKS = 3;
   private static readonly INTERVALOS_RETRY_LINKS_MS = [
     5 * 60_000,
@@ -157,7 +158,10 @@ export class IgnavService implements ConsultarPrecosVoo {
         .sort(
           (ofertaA, ofertaB) => ofertaA.price.amount - ofertaB.price.amount,
         );
-      const ofertasPendentes = [...ofertasVerificadas];
+      const ofertasPendentes = ofertasVerificadas.slice(
+        0,
+        IgnavService.MAXIMO_OFERTAS_PARA_LINKS,
+      );
       let falhaLinks: Error | undefined;
       const cotacoes = await Promise.all(
         Array.from(

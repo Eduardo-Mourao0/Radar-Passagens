@@ -45,7 +45,7 @@ export class PriceCheckJob {
   async executar(
     opcoes: OpcoesVerificacaoPrecos = {},
   ): Promise<ResultadoVerificacaoDaRota[]> {
-    const repetirLinks = opcoes.repetirLinks ?? true;
+    const repetirLinks = opcoes.repetirLinks ?? false;
     const inicioDeHoje = new Date();
     inicioDeHoje.setHours(0, 0, 0, 0);
 

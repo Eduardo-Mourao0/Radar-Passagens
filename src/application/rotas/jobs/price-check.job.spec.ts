@@ -79,7 +79,7 @@ describe('PriceCheckJob', () => {
     expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'rota-2' }),
       expect.objectContaining({ id: 'usuario-1' }),
-      true,
+      false,
     );
     expect(errorLog).toHaveBeenCalledTimes(1);
     expect(infoLog).toHaveBeenCalledTimes(3);
@@ -168,7 +168,7 @@ describe('PriceCheckJob', () => {
     expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
       rota,
       expect.anything(),
-      true,
+      false,
     );
     infoLog.mockRestore();
     warnLog.mockRestore();

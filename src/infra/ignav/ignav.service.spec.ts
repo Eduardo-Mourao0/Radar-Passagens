@@ -100,7 +100,7 @@ describe('IgnavService', () => {
     expect(httpService.post).toHaveBeenCalledTimes(2);
   });
 
-  it('persiste o menor preço verificado entre os sites oficiais', async () => {
+  it('persiste o menor total de ida e volta com link oficial verificado', async () => {
     const rotaIdaEVolta = {
       ...rota,
       dataVolta: new Date(2026, 8, 20),
@@ -170,13 +170,63 @@ describe('IgnavService', () => {
     const service = new IgnavService(httpService, configService);
 
     await expect(service.consultarMenorPreco(rotaIdaEVolta)).resolves.toEqual({
-      preco: '410.00',
+      preco: '380.00',
       moeda: 'BRL',
-      ignavId: 'ignav-azul',
-      companhia: 'Azul',
-      horarioIda: '2026-09-10T08:30:00',
+      ignavId: 'ignav-gol',
+      companhia: 'GOL',
+      urlCompra: 'https://www.voegol.com.br',
+    });
+  });
+
+  it('não usa o preço parcial do link para uma rota de ida e volta', async () => {
+    const rotaIdaEVolta = {
+      ...rota,
+      dataVolta: new Date(2026, 8, 20),
+    };
+    const httpService = criarHttpService(
+      {
+        itineraries: [
+          {
+            ignav_id: 'ignav-ida-e-volta',
+            price: { amount: 900, currency: 'BRL', status: 'verified' },
+            outbound: {
+              segments: [
+                {
+                  operating_carrier_name: 'LATAM',
+                  marketing_carrier_code: 'LA',
+                },
+              ],
+            },
+            inbound: {
+              segments: [
+                {
+                  departure_time: '2026-09-20T18:45:00',
+                },
+              ],
+            },
+          },
+        ],
+      },
+      {
+        'ignav-ida-e-volta': respostaLinks([
+          {
+            provider_name: 'LATAM',
+            provider_type: 'airline',
+            price: { amount: 450, currency: 'BRL', status: 'verified' },
+            url: 'https://www.latamairlines.com',
+          },
+        ]),
+      },
+    );
+    const service = new IgnavService(httpService, configService);
+
+    await expect(service.consultarMenorPreco(rotaIdaEVolta)).resolves.toEqual({
+      preco: '900.00',
+      moeda: 'BRL',
+      ignavId: 'ignav-ida-e-volta',
+      companhia: 'LATAM',
       horarioVolta: '2026-09-20T18:45:00',
-      urlCompra: 'https://www.voeazul.com.br',
+      urlCompra: 'https://www.latamairlines.com',
     });
   });
 

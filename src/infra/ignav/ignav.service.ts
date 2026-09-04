@@ -206,10 +206,15 @@ export class IgnavService implements ConsultarPrecosVoo {
               const horarioVolta = oferta.inbound
                 ? this.obterHorarioSaida(oferta.inbound)
                 : undefined;
+              // Em ida e volta, o preço do itinerário representa o total; o link pode trazer só a ida.
+              const preco = dataVolta
+                ? oferta.price.amount.toFixed(2)
+                : menorLink.preco;
+              const moeda = dataVolta ? oferta.price.currency : menorLink.moeda;
 
               cotacoesDoTrabalhador.push({
-                preco: menorLink.preco,
-                moeda: menorLink.moeda,
+                preco,
+                moeda,
                 ignavId: oferta.ignav_id!,
                 companhia: menorLink.fornecedor,
                 ...(horarioIda ? { horarioIda } : {}),

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type {
   HistoricoPreco,
   Rota,
+  SituacaoCotacao,
 } from '../../../domain/rotas/entities/rota.entity';
 import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import { ROTAS_REPOSITORY } from '../../../domain/rotas/repositories/rotas.repository';
@@ -17,8 +18,7 @@ export type ResultadoVerificacaoPreco = Readonly<{
   historico: HistoricoPreco | null;
 }>;
 
-export type SituacaoCotacaoInicial =
-  'ATUALIZADA' | 'SEM_OFERTA' | 'INDISPONIVEL' | 'NAO_SOLICITADA';
+export type SituacaoCotacaoInicial = SituacaoCotacao;
 
 export type RotaComSituacaoCotacao = Rota &
   Readonly<{ situacaoCotacao: SituacaoCotacaoInicial }>;
@@ -29,6 +29,13 @@ export type RotaComCotacaoAtualizada = RotaComSituacaoCotacao &
 @Injectable()
 export class VerificarPrecoRotaUseCase {
   private readonly logger = new Logger(VerificarPrecoRotaUseCase.name);
+
+  private static readonly INTERVALOS_RETENTATIVA_MS = [
+    60_000,
+    60_000,
+    5 * 60_000,
+    15 * 60_000,
+  ] as const;
 
   constructor(
     @Inject(CONSULTAR_PRECOS_VOO)
@@ -42,29 +49,36 @@ export class VerificarPrecoRotaUseCase {
     usuario?: Usuario,
     repetirLinks = true,
   ): Promise<ResultadoVerificacaoPreco> {
-    const cotacao = await this.consultarPrecosVoo.consultarMenorPreco(
-      rota,
-      repetirLinks ? undefined : { repetirLinks: false },
-    );
-    if (!cotacao) {
+    try {
+      const cotacao = await this.consultarPrecosVoo.consultarMenorPreco(
+        rota,
+        repetirLinks ? undefined : { repetirLinks: false },
+      );
+      if (!cotacao) {
+        await this.atualizarSituacaoCotacao(rota, 'SEM_OFERTA');
+        return {
+          ofertaEncontrada: false,
+          historicoRegistrado: false,
+          historico: null,
+        };
+      }
+
+      const resultado = await this.registrarHistoricoPreco.execute(
+        { rotaId: rota.id, ...cotacao },
+        rota,
+        usuario,
+      );
+      await this.atualizarSituacaoCotacao(rota, 'ATUALIZADA');
+
       return {
-        ofertaEncontrada: false,
-        historicoRegistrado: false,
-        historico: null,
+        ofertaEncontrada: true,
+        historicoRegistrado: resultado.registrado,
+        historico: resultado.historico,
       };
+    } catch (erro: unknown) {
+      await this.atualizarSituacaoCotacao(rota, 'INDISPONIVEL');
+      throw erro;
     }
-
-    const resultado = await this.registrarHistoricoPreco.execute(
-      { rotaId: rota.id, ...cotacao },
-      rota,
-      usuario,
-    );
-
-    return {
-      ofertaEncontrada: true,
-      historicoRegistrado: resultado.registrado,
-      historico: resultado.historico,
-    };
   }
 
   async executarParaUsuario(
@@ -114,5 +128,28 @@ export class VerificarPrecoRotaUseCase {
       );
       return 'INDISPONIVEL';
     }
+  }
+
+  private async atualizarSituacaoCotacao(
+    rota: Rota,
+    situacaoCotacao: SituacaoCotacao,
+  ): Promise<void> {
+    const tentativasCotacao =
+      situacaoCotacao === 'INDISPONIVEL' ? rota.tentativasCotacao + 1 : 0;
+    const intervaloRetentativa =
+      VerificarPrecoRotaUseCase.INTERVALOS_RETENTATIVA_MS[
+        tentativasCotacao - 1
+      ];
+    const ultimaCotacaoEm = new Date();
+
+    await this.rotasRepository.atualizarSituacaoCotacao(rota.id, {
+      situacaoCotacao,
+      ultimaCotacaoEm,
+      tentativasCotacao,
+      proximaTentativaCotacaoEm:
+        intervaloRetentativa === undefined
+          ? null
+          : new Date(ultimaCotacaoEm.getTime() + intervaloRetentativa),
+    });
   }
 }

@@ -17,6 +17,10 @@ model Rota {
   dataIda            DateTime
   dataVolta          DateTime?
   ativa              Boolean          @default(true)
+  situacaoCotacao    SituacaoCotacao  @default(PENDENTE)
+  ultimaCotacaoEm    DateTime?
+  proximaTentativaCotacaoEm DateTime?
+  tentativasCotacao  Int              @default(0)
   criadoEm           DateTime         @default(now())
   historicos         HistoricoPreco[]
   alertaPreco        AlertaPreco?
@@ -24,6 +28,14 @@ model Rota {
   @@unique([usuarioId, chaveMonitoramento])
   @@index([usuarioId, criadoEm(sort: Desc)])
   @@index([ativa])
+  @@index([ativa, situacaoCotacao, proximaTentativaCotacaoEm])
+}
+
+enum SituacaoCotacao {
+  PENDENTE
+  ATUALIZADA
+  SEM_OFERTA
+  INDISPONIVEL
 }
 
 model Usuario {

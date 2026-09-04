@@ -7,8 +7,15 @@ import { VerificarPrecoRotaUseCase } from './verificar-preco-rota.use-case';
 describe('VerificarPrecoRotaUseCase', () => {
   const consultarPrecosVoo = { consultarMenorPreco: jest.fn() };
   const registrarHistoricoPreco = { execute: jest.fn() };
-  const rotasRepository = { buscarPorId: jest.fn() };
-  const rota = { id: 'rota-1', usuarioId: 'usuario-1' } as never;
+  const rotasRepository = {
+    buscarPorId: jest.fn(),
+    atualizarSituacaoCotacao: jest.fn(),
+  };
+  const rota = {
+    id: 'rota-1',
+    usuarioId: 'usuario-1',
+    tentativasCotacao: 0,
+  } as never;
 
   let useCase: VerificarPrecoRotaUseCase;
 
@@ -37,6 +44,14 @@ describe('VerificarPrecoRotaUseCase', () => {
       historico: null,
     });
     expect(registrarHistoricoPreco.execute).not.toHaveBeenCalled();
+    expect(rotasRepository.atualizarSituacaoCotacao).toHaveBeenCalledWith(
+      'rota-1',
+      expect.objectContaining({
+        situacaoCotacao: 'SEM_OFERTA',
+        tentativasCotacao: 0,
+        proximaTentativaCotacaoEm: null,
+      }),
+    );
   });
 
   it('registra a cotação encontrada somente para a rota solicitada', async () => {
@@ -78,6 +93,14 @@ describe('VerificarPrecoRotaUseCase', () => {
       rota,
       undefined,
     );
+    expect(rotasRepository.atualizarSituacaoCotacao).toHaveBeenCalledWith(
+      'rota-1',
+      expect.objectContaining({
+        situacaoCotacao: 'ATUALIZADA',
+        tentativasCotacao: 0,
+        proximaTentativaCotacaoEm: null,
+      }),
+    );
   });
 
   it('informa indisponibilidade sem propagar falhas da cotação', async () => {
@@ -91,6 +114,14 @@ describe('VerificarPrecoRotaUseCase', () => {
     expect(consultarPrecosVoo.consultarMenorPreco).toHaveBeenCalledWith(rota, {
       repetirLinks: false,
     });
+    expect(rotasRepository.atualizarSituacaoCotacao).toHaveBeenCalledWith(
+      'rota-1',
+      expect.objectContaining({
+        situacaoCotacao: 'INDISPONIVEL',
+        tentativasCotacao: 1,
+        proximaTentativaCotacaoEm: expect.any(Date),
+      }),
+    );
   });
 
   it('atualiza somente a rota pertencente ao usuário e devolve sua cotação', async () => {

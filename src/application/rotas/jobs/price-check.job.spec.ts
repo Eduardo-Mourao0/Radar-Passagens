@@ -201,6 +201,66 @@ describe('PriceCheckJob', () => {
     );
   });
 
+  it('repete em segundo plano apenas cotações indisponíveis vencidas', async () => {
+    const rotasRepository = {
+      listarComRetentativaCotacaoPendente: jest.fn().mockResolvedValue([rota]),
+    };
+    const verificarPrecoRota = {
+      execute: jest.fn().mockResolvedValue({
+        ofertaEncontrada: false,
+        historicoRegistrado: false,
+        historico: null,
+      }),
+    };
+    const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
+    const job = new PriceCheckJob(
+      rotasRepository,
+      verificarPrecoRota,
+      usuariosRepository,
+    );
+
+    await job.executarRetentativas();
+
+    expect(
+      rotasRepository.listarComRetentativaCotacaoPendente,
+    ).toHaveBeenCalledWith(expect.any(Date), 5);
+    expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
+      rota,
+      expect.anything(),
+      false,
+    );
+    expect(infoLog).toHaveBeenCalledWith(
+      JSON.stringify({ evento: 'retentativas_cotacao_concluidas' }),
+    );
+    infoLog.mockRestore();
+  });
+
+  it('não sobrepõe ciclos de retentativa', async () => {
+    let concluirBusca: ((rotas: readonly []) => void) | undefined;
+    const rotasRepository = {
+      listarComRetentativaCotacaoPendente: jest.fn(
+        () =>
+          new Promise<readonly []>((resolve) => {
+            concluirBusca = resolve;
+          }),
+      ),
+    };
+    const job = new PriceCheckJob(
+      rotasRepository,
+      { execute: jest.fn() },
+      usuariosRepository,
+    );
+
+    const primeiraExecucao = job.executarRetentativas();
+    await job.executarRetentativas();
+
+    expect(
+      rotasRepository.listarComRetentativaCotacaoPendente,
+    ).toHaveBeenCalledTimes(1);
+    concluirBusca?.([]);
+    await primeiraExecucao;
+  });
+
   it('avisa quando não encontra o dono de uma rota ativa no lote', async () => {
     const rotasRepository = {
       desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),

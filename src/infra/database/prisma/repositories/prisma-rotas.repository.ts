@@ -7,6 +7,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import {
   AlertaPreco,
+  AtualizacaoSituacaoCotacao,
   HistoricoPreco,
   HistoricoPrecoEntity,
   NovaRota,
@@ -45,7 +46,13 @@ export class PrismaRotasRepository implements RotasRepository {
   async reativar(id: string, usuarioId: string): Promise<Rota> {
     const rota = await this.prisma.rota.update({
       where: { id, usuarioId },
-      data: { ativa: true },
+      data: {
+        ativa: true,
+        situacaoCotacao: 'PENDENTE',
+        ultimaCotacaoEm: null,
+        proximaTentativaCotacaoEm: null,
+        tentativasCotacao: 0,
+      },
     });
 
     return this.mapearRota(rota);
@@ -84,6 +91,23 @@ export class PrismaRotasRepository implements RotasRepository {
     const rotas = await this.prisma.rota.findMany({
       where: { ativa: true },
       orderBy: { criadoEm: 'asc' },
+    });
+
+    return rotas.map((rota) => this.mapearRota(rota));
+  }
+
+  async listarComRetentativaCotacaoPendente(
+    dataReferencia: Date,
+    limite: number,
+  ): Promise<Rota[]> {
+    const rotas = await this.prisma.rota.findMany({
+      where: {
+        ativa: true,
+        situacaoCotacao: 'INDISPONIVEL',
+        proximaTentativaCotacaoEm: { lte: dataReferencia },
+      },
+      orderBy: { proximaTentativaCotacaoEm: 'asc' },
+      take: limite,
     });
 
     return rotas.map((rota) => this.mapearRota(rota));
@@ -155,6 +179,13 @@ export class PrismaRotasRepository implements RotasRepository {
     });
   }
 
+  async atualizarSituacaoCotacao(
+    id: string,
+    dados: AtualizacaoSituacaoCotacao,
+  ): Promise<void> {
+    await this.prisma.rota.update({ where: { id }, data: dados });
+  }
+
   async registrarHistorico(dados: NovoHistoricoPreco): Promise<HistoricoPreco> {
     const historico = await this.prisma.$transaction(async (transacao) => {
       await transacao.$executeRaw`
@@ -177,6 +208,10 @@ export class PrismaRotasRepository implements RotasRepository {
       dataIda: rota.dataIda,
       dataVolta: rota.dataVolta,
       ativa: rota.ativa,
+      situacaoCotacao: rota.situacaoCotacao,
+      ultimaCotacaoEm: rota.ultimaCotacaoEm,
+      proximaTentativaCotacaoEm: rota.proximaTentativaCotacaoEm,
+      tentativasCotacao: rota.tentativasCotacao,
       criadoEm: rota.criadoEm,
     };
   }

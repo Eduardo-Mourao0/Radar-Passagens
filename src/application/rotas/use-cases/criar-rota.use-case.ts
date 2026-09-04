@@ -35,7 +35,7 @@ export class CriarRotaUseCase {
           comando.usuarioId,
         );
         void this.verificarPreco(rotaReativada);
-        return { ...rotaReativada, situacaoCotacao: 'NAO_SOLICITADA' };
+        return { ...rotaReativada, situacaoCotacao: 'PENDENTE' };
       }
 
       throw new ConflictException(MENSAGENS_ERRO.rotaDuplicada);
@@ -44,7 +44,7 @@ export class CriarRotaUseCase {
     const rotaCriada = await this.rotasRepository.criar(novaRota);
     // A consulta pode levar minutos quando o provedor está instável; não bloqueie o cadastro.
     void this.verificarPreco(rotaCriada);
-    return { ...rotaCriada, situacaoCotacao: 'NAO_SOLICITADA' };
+    return { ...rotaCriada, situacaoCotacao: 'PENDENTE' };
   }
 
   private async verificarPreco(rota: Rota): Promise<RotaComSituacaoCotacao> {

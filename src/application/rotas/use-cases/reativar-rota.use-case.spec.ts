@@ -65,7 +65,7 @@ describe('ReativarRotaUseCase', () => {
       useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
     ).resolves.toMatchObject({
       ativa: true,
-      situacaoCotacao: 'NAO_SOLICITADA',
+      situacaoCotacao: 'PENDENTE',
     });
     expect(repositorio.reativar).toHaveBeenCalledWith(rota.id, rota.usuarioId);
     expect(verificarPrecoRota.executarResiliente).toHaveBeenCalledWith(
@@ -80,6 +80,7 @@ describe('ReativarRotaUseCase', () => {
       useCase.execute({ rotaId: rota.id, usuarioId: rota.usuarioId }),
     ).resolves.toMatchObject({
       ativa: true,
+      situacaoCotacao: 'PENDENTE',
     });
     expect(repositorio.reativar).not.toHaveBeenCalled();
     expect(verificarPrecoRota.executarResiliente).not.toHaveBeenCalled();

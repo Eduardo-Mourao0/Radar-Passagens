@@ -10,6 +10,7 @@ import { VerificarPrecoRotaUseCase } from '../use-cases/verificar-preco-rota.use
 
 const FUSO_HORARIO_BRASILIA = 'America/Sao_Paulo';
 const CRON_DUAS_VEZES_AO_DIA = '0 0,12 * * *';
+const CRON_CADA_MINUTO = '0 * * * * *';
 
 export type ResultadoVerificacaoDaRota = Readonly<{
   rotaId: string;
@@ -29,6 +30,7 @@ export class PriceCheckJob {
   private static readonly CONCORRENCIA_MAXIMA = 5;
 
   private readonly logger = new Logger(PriceCheckJob.name);
+  private retentativasEmAndamento = false;
 
   constructor(
     @Inject(ROTAS_REPOSITORY) private readonly rotasRepository: RotasRepository,
@@ -90,6 +92,52 @@ export class PriceCheckJob {
     this.logger.log(JSON.stringify({ evento: 'verificacao_precos_concluida' }));
 
     return resultados;
+  }
+
+  @Cron(CRON_CADA_MINUTO, {
+    timeZone: FUSO_HORARIO_BRASILIA,
+  })
+  async executarRetentativas(): Promise<void> {
+    if (this.retentativasEmAndamento) return;
+
+    this.retentativasEmAndamento = true;
+    try {
+      const rotasPendentes = [
+        ...(await this.rotasRepository.listarComRetentativaCotacaoPendente(
+          new Date(),
+          PriceCheckJob.CONCORRENCIA_MAXIMA,
+        )),
+      ];
+      if (rotasPendentes.length === 0) return;
+
+      this.logger.log(
+        JSON.stringify({
+          evento: 'retentativas_cotacao_iniciadas',
+          quantidadeRotas: rotasPendentes.length,
+        }),
+      );
+      const usuarios = await this.usuariosRepository.buscarPorIds([
+        ...new Set(rotasPendentes.map((rota) => rota.usuarioId)),
+      ]);
+      const usuariosPorId = new Map(
+        usuarios.map((usuario) => [usuario.id, usuario]),
+      );
+      const quantidadeDeTrabalhadores = Math.min(
+        PriceCheckJob.CONCORRENCIA_MAXIMA,
+        rotasPendentes.length,
+      );
+
+      await Promise.all(
+        Array.from({ length: quantidadeDeTrabalhadores }, () =>
+          this.processarRotasPendentes(rotasPendentes, usuariosPorId, false),
+        ),
+      );
+      this.logger.log(
+        JSON.stringify({ evento: 'retentativas_cotacao_concluidas' }),
+      );
+    } finally {
+      this.retentativasEmAndamento = false;
+    }
   }
 
   private async processarRotasPendentes(

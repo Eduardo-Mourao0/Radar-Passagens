@@ -221,7 +221,7 @@ Em desenvolvimento, envie uma requisição sem body:
 POST /rotas/verificar-precos
 ```
 
-O endpoint espera a consulta e a persistência terminarem. Em produção ele é bloqueado para impedir disparos públicos de consultas pagas.
+O endpoint espera uma tentativa de consulta e a persistência terminarem, sem aguardar retentativas demoradas da Ignav. O job agendado continua responsável pelas retentativas em segundo plano. A resposta retorna o resultado de cada rota: `ATUALIZADA` inclui o preço salvo em `ultimoPreco`; `SEM_OFERTA` indica que a Ignav não encontrou uma tarifa verificável; `INDISPONIVEL` indica falha na consulta ao provedor.
 
 ### Configurar alerta de preço
 

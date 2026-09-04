@@ -35,6 +35,8 @@ export const MENSAGENS_ERRO = {
     'A Ignav retornou dados inválidos. Tente novamente mais tarde.',
   ignavConexaoIndisponivel:
     'Não foi possível conectar à Ignav. Verifique sua conexão e tente novamente.',
+  verificacaoPrecosEmAndamento:
+    'Uma verificação de preços já está em andamento. Aguarde a conclusão.',
   linksCompraIndisponiveis:
     'Nenhum link de compra est\u00e1 dispon\u00edvel para a \u00faltima cota\u00e7\u00e3o desta rota.',
 } as const;

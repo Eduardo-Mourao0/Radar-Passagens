@@ -5,10 +5,21 @@ import type { RotasRepository } from '../../../domain/rotas/repositories/rotas.r
 import { USUARIOS_REPOSITORY } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { UsuariosRepository } from '../../../domain/usuarios/repositories/usuarios.repository';
 import type { Usuario } from '../../../domain/usuarios/entities/usuario.entity';
+import type { HistoricoPreco } from '../../../domain/rotas/entities/rota.entity';
 import { VerificarPrecoRotaUseCase } from '../use-cases/verificar-preco-rota.use-case';
 
 const FUSO_HORARIO_BRASILIA = 'America/Sao_Paulo';
 const CRON_DUAS_VEZES_AO_DIA = '0 0,12 * * *';
+
+export type ResultadoVerificacaoDaRota = Readonly<{
+  rotaId: string;
+  situacao: 'ATUALIZADA' | 'SEM_OFERTA' | 'INDISPONIVEL';
+  ultimoPreco: HistoricoPreco | null;
+}>;
+
+export type OpcoesVerificacaoPrecos = Readonly<{
+  repetirLinks?: boolean;
+}>;
 
 /**
  * Orquestra as verificações periódicas; regras de negócio permanecem nos use cases.
@@ -29,7 +40,10 @@ export class PriceCheckJob {
   @Cron(CRON_DUAS_VEZES_AO_DIA, {
     timeZone: FUSO_HORARIO_BRASILIA,
   })
-  async executar(): Promise<void> {
+  async executar(
+    opcoes: OpcoesVerificacaoPrecos = {},
+  ): Promise<ResultadoVerificacaoDaRota[]> {
+    const repetirLinks = opcoes.repetirLinks ?? true;
     const inicioDeHoje = new Date();
     inicioDeHoje.setHours(0, 0, 0, 0);
 
@@ -62,21 +76,32 @@ export class PriceCheckJob {
       rotasPendentes.length,
     );
 
-    await Promise.all(
-      Array.from({ length: quantidadeDeTrabalhadores }, () =>
-        this.processarRotasPendentes(rotasPendentes, usuariosPorId),
-      ),
-    );
+    const resultados = (
+      await Promise.all(
+        Array.from({ length: quantidadeDeTrabalhadores }, () =>
+          this.processarRotasPendentes(
+            rotasPendentes,
+            usuariosPorId,
+            repetirLinks,
+          ),
+        ),
+      )
+    ).flat();
     this.logger.log(JSON.stringify({ evento: 'verificacao_precos_concluida' }));
+
+    return resultados;
   }
 
   private async processarRotasPendentes(
     rotasPendentes: Awaited<ReturnType<RotasRepository['listarAtivas']>>,
     usuariosPorId: ReadonlyMap<string, Usuario>,
-  ): Promise<void> {
+    repetirLinks: boolean,
+  ): Promise<ResultadoVerificacaoDaRota[]> {
+    const resultados: ResultadoVerificacaoDaRota[] = [];
+
     while (rotasPendentes.length > 0) {
       const rota = rotasPendentes.shift();
-      if (!rota) return;
+      if (!rota) break;
 
       const usuario = usuariosPorId.get(rota.usuarioId);
       if (!usuario) {
@@ -89,16 +114,23 @@ export class PriceCheckJob {
         );
       }
 
-      await this.verificarRota(rota, usuario);
+      resultados.push(await this.verificarRota(rota, usuario, repetirLinks));
     }
+
+    return resultados;
   }
 
   private async verificarRota(
     rota: Awaited<ReturnType<RotasRepository['listarAtivas']>>[number],
     usuario: Usuario | undefined,
-  ): Promise<void> {
+    repetirLinks: boolean,
+  ): Promise<ResultadoVerificacaoDaRota> {
     try {
-      const resultado = await this.verificarPrecoRota.execute(rota, usuario);
+      const resultado = await this.verificarPrecoRota.execute(
+        rota,
+        usuario,
+        repetirLinks,
+      );
 
       if (!resultado.ofertaEncontrada) {
         this.logger.log(
@@ -107,7 +139,11 @@ export class PriceCheckJob {
             rotaId: rota.id,
           }),
         );
-        return;
+        return {
+          rotaId: rota.id,
+          situacao: 'SEM_OFERTA',
+          ultimoPreco: null,
+        };
       }
 
       this.logger.log(
@@ -117,6 +153,11 @@ export class PriceCheckJob {
           historicoRegistrado: resultado.historicoRegistrado,
         }),
       );
+      return {
+        rotaId: rota.id,
+        situacao: 'ATUALIZADA',
+        ultimoPreco: resultado.historico,
+      };
     } catch {
       this.logger.error(
         JSON.stringify({
@@ -124,6 +165,11 @@ export class PriceCheckJob {
           rotaId: rota.id,
         }),
       );
+      return {
+        rotaId: rota.id,
+        situacao: 'INDISPONIVEL',
+        ultimoPreco: null,
+      };
     }
   }
 }

@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
@@ -31,7 +32,13 @@ describe('RotasController', () => {
   });
 
   it('executa a verificação manual fora de produção', async () => {
-    priceCheckJob.executar.mockResolvedValue(undefined);
+    priceCheckJob.executar.mockResolvedValue([
+      {
+        rotaId: 'rota-1',
+        situacao: 'ATUALIZADA',
+        ultimoPreco: { preco: '350.00' },
+      },
+    ]);
     const modulo = await Test.createTestingModule({
       controllers: [RotasController],
       providers: [
@@ -65,12 +72,36 @@ describe('RotasController', () => {
 
     await expect(controller.verificarPrecos()).resolves.toEqual({
       mensagem: 'Verificação de preços concluída.',
+      rotas: [
+        {
+          rotaId: 'rota-1',
+          situacao: 'ATUALIZADA',
+          ultimoPreco: { preco: '350.00' },
+        },
+      ],
     });
-    expect(priceCheckJob.executar).toHaveBeenCalledTimes(1);
+    expect(priceCheckJob.executar).toHaveBeenCalledWith({
+      repetirLinks: false,
+    });
+
+    let concluirVerificacao: ((rotas: []) => void) | undefined;
+    priceCheckJob.executar.mockImplementationOnce(
+      () =>
+        new Promise<[]>((resolve) => {
+          concluirVerificacao = resolve;
+        }),
+    );
+    const primeiraVerificacao = controller.verificarPrecos();
+
+    await expect(controller.verificarPrecos()).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    concluirVerificacao?.([]);
+    await primeiraVerificacao;
   });
 
   it('executa a verificação manual em produção para usuário autenticado', async () => {
-    priceCheckJob.executar.mockResolvedValue(undefined);
+    priceCheckJob.executar.mockResolvedValue([]);
     const modulo = await Test.createTestingModule({
       controllers: [RotasController],
       providers: [
@@ -104,6 +135,7 @@ describe('RotasController', () => {
 
     await expect(controller.verificarPrecos()).resolves.toEqual({
       mensagem: 'Verificação de preços concluída.',
+      rotas: [],
     });
     expect(priceCheckJob.executar).toHaveBeenCalledTimes(1);
   });

@@ -34,6 +34,15 @@ describe('PriceCheckJob', () => {
         .mockResolvedValueOnce({
           ofertaEncontrada: true,
           historicoRegistrado: true,
+          historico: {
+            id: 'historico-1',
+            rotaId: 'rota-2',
+            preco: '350.00',
+            moeda: 'BRL',
+            companhia: 'Azul',
+            ignavId: null,
+            coletadoEm: new Date(2026, 0, 1),
+          },
         }),
     };
     const errorLog = jest.spyOn(Logger.prototype, 'error').mockImplementation();
@@ -44,13 +53,33 @@ describe('PriceCheckJob', () => {
       usuariosRepository,
     );
 
-    await job.executar();
+    await expect(job.executar()).resolves.toEqual([
+      {
+        rotaId: 'rota-1',
+        situacao: 'INDISPONIVEL',
+        ultimoPreco: null,
+      },
+      {
+        rotaId: 'rota-2',
+        situacao: 'ATUALIZADA',
+        ultimoPreco: {
+          id: 'historico-1',
+          rotaId: 'rota-2',
+          preco: '350.00',
+          moeda: 'BRL',
+          companhia: 'Azul',
+          ignavId: null,
+          coletadoEm: new Date(2026, 0, 1),
+        },
+      },
+    ]);
 
     expect(verificarPrecoRota.execute).toHaveBeenCalledTimes(2);
     expect(usuariosRepository.buscarPorIds).toHaveBeenCalledWith(['usuario-1']);
     expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'rota-2' }),
       expect.objectContaining({ id: 'usuario-1' }),
+      true,
     );
     expect(errorLog).toHaveBeenCalledTimes(1);
     expect(infoLog).toHaveBeenCalledTimes(3);
@@ -80,7 +109,11 @@ describe('PriceCheckJob', () => {
         await new Promise<void>((resolve) => setTimeout(resolve, 10));
         verificacoesEmAndamento -= 1;
 
-        return { ofertaEncontrada: true, historicoRegistrado: true };
+        return {
+          ofertaEncontrada: true,
+          historicoRegistrado: true,
+          historico: null,
+        };
       }),
     };
     const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
@@ -106,6 +139,7 @@ describe('PriceCheckJob', () => {
       execute: jest.fn().mockResolvedValue({
         ofertaEncontrada: false,
         historicoRegistrado: false,
+        historico: null,
       }),
     };
     const infoLog = jest.spyOn(Logger.prototype, 'log').mockImplementation();
@@ -116,7 +150,13 @@ describe('PriceCheckJob', () => {
       usuariosRepository,
     );
 
-    await job.executar();
+    await expect(job.executar()).resolves.toEqual([
+      {
+        rotaId: 'rota-1',
+        situacao: 'SEM_OFERTA',
+        ultimoPreco: null,
+      },
+    ]);
 
     expect(infoLog).toHaveBeenCalledWith(
       JSON.stringify({
@@ -128,9 +168,37 @@ describe('PriceCheckJob', () => {
     expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
       rota,
       expect.anything(),
+      true,
     );
     infoLog.mockRestore();
     warnLog.mockRestore();
+  });
+
+  it('não repete consultas de links quando a verificação é manual', async () => {
+    const rotasRepository = {
+      desativarRotasComDataIdaPassada: jest.fn().mockResolvedValue(0),
+      listarAtivas: jest.fn().mockResolvedValue([rota]),
+    };
+    const verificarPrecoRota = {
+      execute: jest.fn().mockResolvedValue({
+        ofertaEncontrada: false,
+        historicoRegistrado: false,
+        historico: null,
+      }),
+    };
+    const job = new PriceCheckJob(
+      rotasRepository,
+      verificarPrecoRota,
+      usuariosRepository,
+    );
+
+    await job.executar({ repetirLinks: false });
+
+    expect(verificarPrecoRota.execute).toHaveBeenCalledWith(
+      rota,
+      expect.anything(),
+      false,
+    );
   });
 
   it('avisa quando não encontra o dono de uma rota ativa no lote', async () => {
@@ -142,6 +210,7 @@ describe('PriceCheckJob', () => {
       execute: jest.fn().mockResolvedValue({
         ofertaEncontrada: false,
         historicoRegistrado: false,
+        historico: null,
       }),
     };
     const repositorioSemUsuario = {

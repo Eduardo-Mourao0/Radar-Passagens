@@ -103,7 +103,7 @@ export class VerificarPrecoRotaUseCase {
     usuario?: Usuario,
   ): Promise<SituacaoCotacaoInicial> {
     try {
-      const resultado = await this.execute(rota, usuario);
+      const resultado = await this.execute(rota, usuario, false);
       return resultado.ofertaEncontrada ? 'ATUALIZADA' : 'SEM_OFERTA';
     } catch {
       this.logger.error(

@@ -221,7 +221,7 @@ Em desenvolvimento, envie uma requisição sem body:
 POST /rotas/verificar-precos
 ```
 
-O endpoint espera uma tentativa de consulta e a persistência terminarem, sem aguardar retentativas demoradas da Ignav. O job agendado continua responsável pelas retentativas em segundo plano. A resposta retorna o resultado de cada rota: `ATUALIZADA` inclui o preço salvo em `ultimoPreco`; `SEM_OFERTA` indica que a Ignav não encontrou uma tarifa verificável; `INDISPONIVEL` indica falha na consulta ao provedor.
+O endpoint espera uma tentativa de consulta e a persistência terminarem, sem aguardar retentativas demoradas da Ignav. O job agendado controla as retentativas em segundo plano, limitando a consulta aos três itinerários mais baratos com uma chamada de link por vez. A resposta retorna o resultado de cada rota: `ATUALIZADA` inclui o preço salvo em `ultimoPreco`; `SEM_OFERTA` indica que a Ignav não encontrou uma tarifa verificável; `INDISPONIVEL` indica falha na consulta ao provedor.
 
 `GET /rotas` expõe o estado persistido da cotação em `situacaoCotacao`, `ultimaCotacaoEm`, `proximaTentativaCotacaoEm` e `tentativasCotacao`. Enquanto a situação for `PENDENTE` ou `INDISPONIVEL`, o frontend pode consultar novamente essa rota para atualizar a tela. Falhas técnicas são repetidas em 1 minuto nas duas primeiras tentativas, depois em 5 e 15 minutos. `SEM_OFERTA` não gera retentativa automática.
 

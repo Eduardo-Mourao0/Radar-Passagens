@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -14,7 +15,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { PriceCheckJob } from '../../../application/rotas/jobs/price-check.job';
+import {
+  PriceCheckJob,
+  type ResultadoVerificacaoDaRota,
+} from '../../../application/rotas/jobs/price-check.job';
+import { MENSAGENS_ERRO } from '../../../domain/errors/mensagens-erro';
 import { ConfigurarAlertaPrecoUseCase } from '../../../application/rotas/use-cases/configurar-alerta-preco.use-case';
 import { CriarRotaUseCase } from '../../../application/rotas/use-cases/criar-rota.use-case';
 import { DesativarRotaUseCase } from '../../../application/rotas/use-cases/desativar-rota.use-case';
@@ -42,6 +47,8 @@ import {
 @Controller('rotas')
 @UseGuards(AutenticacaoGuard)
 export class RotasController {
+  private verificacaoPrecosManualEmAndamento = false;
+
   constructor(
     private readonly criarRotaUseCase: CriarRotaUseCase,
     private readonly desativarRotaUseCase: DesativarRotaUseCase,
@@ -143,9 +150,21 @@ export class RotasController {
 
   @Post('verificar-precos')
   @HttpCode(HttpStatus.OK)
-  async verificarPrecos(): Promise<{ mensagem: string }> {
-    await this.priceCheckJob.executar();
-    return { mensagem: 'Verificação de preços concluída.' };
+  async verificarPrecos(): Promise<{
+    mensagem: string;
+    rotas: ResultadoVerificacaoDaRota[];
+  }> {
+    if (this.verificacaoPrecosManualEmAndamento) {
+      throw new ConflictException(MENSAGENS_ERRO.verificacaoPrecosEmAndamento);
+    }
+
+    this.verificacaoPrecosManualEmAndamento = true;
+    try {
+      const rotas = await this.priceCheckJob.executar({ repetirLinks: false });
+      return { mensagem: 'Verificação de preços concluída.', rotas };
+    } finally {
+      this.verificacaoPrecosManualEmAndamento = false;
+    }
   }
 
   @Post(':id/verificar-preco')

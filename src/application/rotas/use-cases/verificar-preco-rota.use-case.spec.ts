@@ -88,6 +88,9 @@ describe('VerificarPrecoRotaUseCase', () => {
     await expect(useCase.executarResiliente(rota)).resolves.toBe(
       'INDISPONIVEL',
     );
+    expect(consultarPrecosVoo.consultarMenorPreco).toHaveBeenCalledWith(rota, {
+      repetirLinks: false,
+    });
   });
 
   it('atualiza somente a rota pertencente ao usuário e devolve sua cotação', async () => {
